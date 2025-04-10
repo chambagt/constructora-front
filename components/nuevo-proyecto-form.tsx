@@ -21,16 +21,20 @@ const formSchema = z.object({
   }),
 })
 
-// Tipo para un proyecto
+// Actualizar el tipo Proyecto para incluir los nuevos campos
 export type Proyecto = {
   id: string
   nombre: string
   empresa: string
   fecha: string
   cedulas: string[] // IDs de cédulas asociadas
+  tipo?: "presupuesto" | "venta" // Tipo de proyecto
+  esProyectoPrincipal?: boolean // Indica si es un proyecto principal
+  proyectoPrincipalId?: string // ID del proyecto principal al que pertenece
 }
 
-export function NuevoProyectoForm() {
+// Actualizar la función NuevoProyectoForm para aceptar un tipo de proyecto
+export function NuevoProyectoForm({ tipo }: { tipo?: "presupuesto" | "venta" }) {
   const [isSubmitting, setIsSubmitting] = useState(false)
   const router = useRouter()
 
@@ -42,27 +46,60 @@ export function NuevoProyectoForm() {
     },
   })
 
+  // Modificar la función onSubmit para asegurarnos de que esProyectoPrincipal sea true
   function onSubmit(values: z.infer<typeof formSchema>) {
     setIsSubmitting(true)
 
     try {
-      // Crear un nuevo proyecto
+      // Crear un ID base para el proyecto principal
+      const proyectoBaseId = Date.now().toString()
+
+      // Crear el proyecto principal
       const nuevoProyecto: Proyecto = {
-        id: Date.now().toString(),
+        id: proyectoBaseId,
         nombre: values.nombre,
         empresa: values.empresa,
         fecha: new Date().toISOString(),
         cedulas: [],
+        esProyectoPrincipal: true, // Asegurarnos de que esto sea true
+      }
+
+      // Crear subproyecto de presupuesto
+      const proyectoPresupuesto: Proyecto = {
+        id: `${proyectoBaseId}-presupuesto`,
+        nombre: `${values.nombre} - Presupuesto`,
+        empresa: values.empresa,
+        fecha: new Date().toISOString(),
+        cedulas: [],
+        tipo: "presupuesto",
+        proyectoPrincipalId: proyectoBaseId,
+      }
+
+      // Crear subproyecto de venta
+      const proyectoVenta: Proyecto = {
+        id: `${proyectoBaseId}-venta`,
+        nombre: `${values.nombre} - Venta`,
+        empresa: values.empresa,
+        fecha: new Date().toISOString(),
+        cedulas: [],
+        tipo: "venta",
+        proyectoPrincipalId: proyectoBaseId,
       }
 
       // Guardar en localStorage
       if (typeof window !== "undefined") {
         const proyectosGuardados = JSON.parse(localStorage.getItem("proyectos") || "[]")
-        proyectosGuardados.push(nuevoProyecto)
+
+        // Añadir los nuevos proyectos
+        proyectosGuardados.push(nuevoProyecto, proyectoPresupuesto, proyectoVenta)
+
+        // Guardar en localStorage
         localStorage.setItem("proyectos", JSON.stringify(proyectosGuardados))
+
+        console.log("Proyecto principal creado:", nuevoProyecto)
       }
 
-      // Redirigir a la página del proyecto
+      // Redirigir a la página del proyecto principal
       router.push(`/proyectos/${nuevoProyecto.id}`)
     } catch (error) {
       console.error("Error al crear el proyecto:", error)
@@ -71,10 +108,17 @@ export function NuevoProyectoForm() {
     }
   }
 
+  // Determinar el título según el tipo de proyecto
+  const getTitulo = () => {
+    if (tipo === "presupuesto") return "Nuevo Proyecto de Presupuesto"
+    if (tipo === "venta") return "Nuevo Proyecto de Venta"
+    return "Nuevo Proyecto"
+  }
+
   return (
     <Card className="w-full max-w-md mx-auto">
       <CardHeader>
-        <CardTitle>Nuevo Proyecto</CardTitle>
+        <CardTitle>{getTitulo()}</CardTitle>
       </CardHeader>
       <CardContent>
         <Form {...form}>
@@ -114,4 +158,3 @@ export function NuevoProyectoForm() {
     </Card>
   )
 }
-
