@@ -226,6 +226,24 @@ export function NuevaCedula() {
   const [factorIndirectos, setFactorIndirectos] = useState(0.15) // 15% por defecto
   const [factorUtilidad, setFactorUtilidad] = useState(0.1) // 10% por defecto
 
+  // Estados para la fila de entrada
+  const [filaTarea, setFilaTarea] = useState<string>("")
+  const [filaDescripcion, setFilaDescripcion] = useState<string>("")
+  const [filaUnidad, setFilaUnidad] = useState<string>("Unidad")
+  const [filaCantidad, setFilaCantidad] = useState<number>(0)
+  const [filaPrecioUnitario, setFilaPrecioUnitario] = useState<number>(0)
+  const [filaPorcentajeImp, setFilaPorcentajeImp] = useState<number>(0)
+  const [filaQImp, setFilaQImp] = useState<number>(0)
+  const [filaPorcentajeFactInd, setFilaPorcentajeFactInd] = useState<number>(0)
+  const [filaQIndUtild, setFilaQIndUtild] = useState<number>(0)
+  const [filaTotal, setFilaTotal] = useState<number>(0)
+  const [filaPU, setFilaPU] = useState<number>(0)
+  const [filaPorcentajeIncidencia, setFilaPorcentajeIncidencia] = useState<number>(0)
+  const [filaRendUnidad, setFilaRendUnidad] = useState<number>(1)
+
+  // Calcular el total de insumos como cantidad * rendimiento/unidad
+  const filaTotalInsumos = filaCantidad * filaRendUnidad
+
   // Calcular subtotales por familia
   const totalMateriales = elementosSeleccionados
     .filter((elemento) => elemento.familia === "MT")
@@ -243,6 +261,39 @@ export function NuevaCedula() {
   const indirectos = subtotalCedula * factorIndirectos
   const utilidad = subtotalCedula * factorUtilidad
   const totalCedula = subtotalCedula + impuestos + indirectos + utilidad
+
+  // Actualizar totales de materiales cuando cambie filaCantidad
+  useEffect(() => {
+    if (elementosSeleccionados.length > 0) {
+      setElementosSeleccionados(
+        elementosSeleccionados.map((elemento) => {
+          if (elemento.familia === "MT") {
+            // Multiplicar solo por rendimiento/unidad * cantidad
+            const nuevoTotal = filaRendUnidad * filaCantidad
+            return {
+              ...elemento,
+              total: nuevoTotal,
+            }
+          }
+          return elemento
+        }),
+      )
+    }
+  }, [filaCantidad, filaRendUnidad])
+
+  // Función para calcular los porcentajes de incidencia
+  useEffect(() => {
+    if (elementosSeleccionados.length > 0 && totalCedula > 0) {
+      setElementosSeleccionados(
+        elementosSeleccionados.map((elemento) => {
+          return {
+            ...elemento,
+            porcentaje: (elemento.total / totalCedula) * 100,
+          }
+        }),
+      )
+    }
+  }, [elementosSeleccionados.length, totalCedula])
 
   // Función para guardar la cédula
   const guardarCedula = () => {
@@ -318,6 +369,11 @@ export function NuevaCedula() {
     if (tipo === "MT") {
       elemento = materialesEjemplo.find((m) => m.id === id)
       if (elemento) {
+        const rendimiento = filaRendUnidad
+        // Usar solo rendimiento/unidad * cantidad para el cálculo
+        const totalInsumos = rendimiento * filaCantidad
+        const costoGlobal = elemento.precio * totalInsumos
+        const costoUnidad = elemento.precio * rendimiento
         const nuevoElemento: ElementoCedula = {
           id: elemento.id,
           codigo: elemento.codigo,
@@ -325,11 +381,11 @@ export function NuevaCedula() {
           descripcion: elemento.nombre,
           unidad: elemento.unidad,
           precio: elemento.precio,
-          cantidad: 1,
-          total: elemento.precio,
-          rendimiento: 1,
-          costoGlobal: elemento.precio,
-          costoUnidad: elemento.precio,
+          cantidad: 1, // Mantenemos cantidad en 1 pero usamos filaCantidad para el cálculo
+          total: totalInsumos,
+          rendimiento: rendimiento,
+          costoGlobal: costoGlobal,
+          costoUnidad: costoUnidad,
           porcentaje: 0, // Se calculará después
         }
         setElementosSeleccionados([...elementosSeleccionados, nuevoElemento])
@@ -337,6 +393,10 @@ export function NuevaCedula() {
     } else if (tipo === "MO") {
       elemento = manoObraEjemplo.find((m) => m.id === id)
       if (elemento) {
+        const rendimiento = 1
+        const totalInsumos = rendimiento * 1 // Cantidad 1 por defecto
+        const costoGlobal = elemento.precio * totalInsumos
+        const costoUnidad = elemento.precio * rendimiento
         const nuevoElemento: ElementoCedula = {
           id: elemento.id,
           codigo: elemento.codigo,
@@ -345,10 +405,10 @@ export function NuevaCedula() {
           unidad: elemento.unidad,
           precio: elemento.precio,
           cantidad: 1,
-          total: elemento.precio,
-          rendimiento: 1,
-          costoGlobal: elemento.precio,
-          costoUnidad: elemento.precio,
+          total: totalInsumos,
+          rendimiento: rendimiento,
+          costoGlobal: costoGlobal,
+          costoUnidad: costoUnidad,
           porcentaje: 0, // Se calculará después
         }
         setElementosSeleccionados([...elementosSeleccionados, nuevoElemento])
@@ -356,6 +416,10 @@ export function NuevaCedula() {
     } else if (tipo === "EQ") {
       elemento = equiposEjemplo.find((e) => e.id === id)
       if (elemento) {
+        const rendimiento = 1
+        const totalInsumos = rendimiento * 1 // Cantidad 1 por defecto
+        const costoGlobal = elemento.precio * totalInsumos
+        const costoUnidad = elemento.precio * rendimiento
         const nuevoElemento: ElementoCedula = {
           id: elemento.id,
           codigo: elemento.codigo,
@@ -365,10 +429,10 @@ export function NuevaCedula() {
           unidad: elemento.unidad,
           precio: elemento.precio,
           cantidad: 1,
-          total: elemento.precio,
-          rendimiento: 1,
-          costoGlobal: elemento.precio,
-          costoUnidad: elemento.precio,
+          total: totalInsumos,
+          rendimiento: rendimiento,
+          costoGlobal: costoGlobal,
+          costoUnidad: costoUnidad,
           porcentaje: 0, // Se calculará después
           rendHora: 1, // Valor por defecto para equipamiento
           mxHora: elemento.consumoCombustible || 0, // Usar consumo de combustible como mx/hora
@@ -386,13 +450,16 @@ export function NuevaCedula() {
       elementosSeleccionados.map((elemento) => {
         if (elemento.id === id) {
           const nuevaCantidad = Math.max(0, cantidad)
-          const nuevoTotal = elemento.precio * nuevaCantidad
+          const rendimiento = elemento.rendimiento || 1
+          const totalInsumos = rendimiento * nuevaCantidad
+          const costoGlobal = elemento.precio * totalInsumos
+          const costoUnidad = elemento.precio * rendimiento
           return {
             ...elemento,
             cantidad: nuevaCantidad,
-            total: nuevoTotal,
-            costoGlobal: nuevoTotal,
-            costoUnidad: nuevaCantidad > 0 ? nuevoTotal / (elemento.rendimiento || 1) : 0,
+            total: totalInsumos,
+            costoGlobal: costoGlobal,
+            costoUnidad: costoUnidad,
           }
         }
         return elemento
@@ -406,13 +473,18 @@ export function NuevaCedula() {
       elementosSeleccionados.map((elemento) => {
         if (elemento.id === id) {
           const nuevoPrecio = Math.max(0, precio)
-          const nuevoTotal = nuevoPrecio * elemento.cantidad
+          const rendimiento = elemento.rendimiento || 1
+          // Si es un material, usar filaCantidad para el cálculo
+          const cantidad = elemento.familia === "MT" ? filaCantidad : elemento.cantidad
+          const totalInsumos = rendimiento * cantidad
+          const costoGlobal = nuevoPrecio * totalInsumos
+          const costoUnidad = nuevoPrecio * rendimiento
           return {
             ...elemento,
             precio: nuevoPrecio,
-            total: nuevoTotal,
-            costoGlobal: nuevoTotal,
-            costoUnidad: elemento.cantidad > 0 ? nuevoTotal / (elemento.rendimiento || 1) : 0,
+            total: totalInsumos,
+            costoGlobal: costoGlobal,
+            costoUnidad: costoUnidad,
           }
         }
         return elemento
@@ -456,12 +528,17 @@ export function NuevaCedula() {
       elementosSeleccionados.map((elemento) => {
         if (elemento.id === id) {
           const nuevoRendimiento = Math.max(0.01, rendimiento)
-          const costoGlobal = elemento.precio * elemento.cantidad
+          // Si es un material, usar filaCantidad para el cálculo
+          const cantidad = elemento.familia === "MT" ? filaCantidad : elemento.cantidad
+          const totalInsumos = nuevoRendimiento * cantidad
+          const costoGlobal = elemento.precio * totalInsumos
+          const costoUnidad = elemento.precio * nuevoRendimiento
           return {
             ...elemento,
             rendimiento: nuevoRendimiento,
+            total: totalInsumos,
             costoGlobal: costoGlobal,
-            costoUnidad: costoGlobal / nuevoRendimiento,
+            costoUnidad: costoUnidad,
           }
         }
         return elemento
@@ -502,20 +579,6 @@ export function NuevaCedula() {
   const eliminarElemento = (id: string) => {
     setElementosSeleccionados(elementosSeleccionados.filter((elemento) => elemento.id !== id))
   }
-
-  // Función para calcular los porcentajes de incidencia
-  useEffect(() => {
-    if (elementosSeleccionados.length > 0 && totalCedula > 0) {
-      setElementosSeleccionados(
-        elementosSeleccionados.map((elemento) => {
-          return {
-            ...elemento,
-            porcentaje: (elemento.total / totalCedula) * 100,
-          }
-        }),
-      )
-    }
-  }, [elementosSeleccionados.length, totalCedula])
 
   // Función para exportar la cédula a PDF (simulada)
   const exportarPDF = () => {
@@ -674,12 +737,10 @@ export function NuevaCedula() {
                       />
                     </td>
                     <td className="px-4 py-2 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">
-                      Q{elemento.costoGlobal?.toFixed(2) || (elemento.precio * elemento.cantidad).toFixed(2)}
+                      Q{elemento.precio * elemento.total}
                     </td>
                     <td className="px-4 py-2 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">
-                      Q
-                      {elemento.costoUnidad?.toFixed(2) ||
-                        ((elemento.precio * elemento.cantidad) / (elemento.rendimiento || 1)).toFixed(2)}
+                      Q{elemento.costoUnidad?.toFixed(2) || (elemento.precio * (elemento.rendimiento || 1)).toFixed(2)}
                     </td>
                     <td className="px-4 py-2 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">
                       {elemento.porcentaje?.toFixed(2) || "0.00"}%
@@ -800,12 +861,10 @@ export function NuevaCedula() {
                     />
                   </td>
                   <td className="px-4 py-2 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">
-                    Q{elemento.costoGlobal?.toFixed(2) || (elemento.precio * elemento.cantidad).toFixed(2)}
+                    Q{elemento.precio * elemento.total}
                   </td>
                   <td className="px-4 py-2 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">
-                    Q
-                    {elemento.costoUnidad?.toFixed(2) ||
-                      ((elemento.precio * elemento.cantidad) / (elemento.rendimiento || 1)).toFixed(2)}
+                    Q{elemento.costoUnidad?.toFixed(2) || (elemento.precio * (elemento.rendimiento || 1)).toFixed(2)}
                   </td>
                   <td className="px-4 py-2 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">
                     {elemento.porcentaje?.toFixed(2) || "0.00"}%
@@ -857,6 +916,13 @@ export function NuevaCedula() {
                 </div>
               </div>
               <div className="flex items-center bg-gray-100 dark:bg-zinc-700 p-3 rounded-md">
+                <HardHat className="h-5 w-5 text-green-500 mr-2" />
+                <div className="flex flex-col">
+                  <span className="text-xs text-gray-500 dark:text-gray-400">Mano de Obra:</span>
+                  <span className="font-medium text-gray-900 dark:text-white">Q{totalManoObra.toFixed(2)}</span>
+                </div>
+              </div>
+              <div className="flex items-center bg-gray-100 dark:bg-zinc-700 p-3 rounded-md">
                 <Truck className="h-5 w-5 text-amber-500 mr-2" />
                 <div className="flex flex-col">
                   <span className="text-xs text-gray-500 dark:text-gray-400">Equipamiento:</span>
@@ -868,6 +934,149 @@ export function NuevaCedula() {
                 <div className="flex flex-col">
                   <span className="text-xs text-gray-500 dark:text-gray-400">Total de la Cédula:</span>
                   <span className="font-bold text-gray-900 dark:text-white">Q{totalCedula.toFixed(2)}</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Fila completa con todos los campos como en la imagen */}
+
+            <div className="mt-4 border border-gray-200 dark:border-zinc-700 rounded-md overflow-hidden">
+              <div className="grid grid-cols-12 gap-0 bg-gray-50 dark:bg-zinc-800 text-xs font-medium text-gray-700 dark:text-gray-300 border-b border-gray-200 dark:border-zinc-700">
+                <div className="p-2 border-r border-gray-200 dark:border-zinc-700">Tarea</div>
+                <div className="p-2 border-r border-gray-200 dark:border-zinc-700"></div>
+                <div className="p-2 border-r border-gray-200 dark:border-zinc-700">Unidad</div>
+                <div className="p-2 border-r border-gray-200 dark:border-zinc-700">Cant</div>
+                <div className="p-2 border-r border-gray-200 dark:border-zinc-700"></div>
+                <div className="p-2 border-r border-gray-200 dark:border-zinc-700">%IMP</div>
+                <div className="p-2 border-r border-gray-200 dark:border-zinc-700">Q.IMP</div>
+                <div className="p-2 border-r border-gray-200 dark:border-zinc-700">%FACT IND</div>
+                <div className="p-2 border-r border-gray-200 dark:border-zinc-700">Q.IND.UTILD</div>
+                <div className="p-2 border-r border-gray-200 dark:border-zinc-700">TOTAL</div>
+                <div className="p-2 border-r border-gray-200 dark:border-zinc-700">P/U</div>
+                <div className="p-2">%INCIDENCIA</div>
+              </div>
+              <div className="grid grid-cols-12 gap-0 bg-white dark:bg-zinc-900">
+                <div className="p-1 border-r border-gray-200 dark:border-zinc-700">
+                  <Input
+                    className="h-8 text-xs"
+                    placeholder="Ingrese tarea"
+                    value={filaTarea}
+                    onChange={(e) => setFilaTarea(e.target.value)}
+                  />
+                </div>
+                <div className="p-1 border-r border-gray-200 dark:border-zinc-700">
+                  <Input
+                    className="h-8 text-xs"
+                    placeholder=""
+                    value={filaDescripcion}
+                    onChange={(e) => setFilaDescripcion(e.target.value)}
+                  />
+                </div>
+                <div className="p-1 border-r border-gray-200 dark:border-zinc-700">
+                  <Input
+                    className="h-8 text-xs"
+                    placeholder="Unidad"
+                    value={filaUnidad}
+                    onChange={(e) => setFilaUnidad(e.target.value)}
+                  />
+                </div>
+                <div className="p-1 border-r border-gray-200 dark:border-zinc-700">
+                  <Input
+                    className="h-8 text-xs"
+                    type="number"
+                    placeholder="0"
+                    value={filaCantidad || ""}
+                    onChange={(e) => {
+                      const newCant = Number(e.target.value) || 0
+                      setFilaCantidad(newCant)
+                    }}
+                  />
+                </div>
+                <div className="p-1 border-r border-gray-200 dark:border-zinc-700">
+                  <Input
+                    className="h-8 text-xs"
+                    type="number"
+                    placeholder=""
+                    value={filaPrecioUnitario || ""}
+                    onChange={(e) => setFilaPrecioUnitario(Number(e.target.value) || 0)}
+                  />
+                </div>
+                <div className="p-1 border-r border-gray-200 dark:border-zinc-700">
+                  <Input
+                    className="h-8 text-xs"
+                    type="text"
+                    placeholder="0%"
+                    value={`${filaPorcentajeImp || 0}%`}
+                    onChange={(e) => {
+                      const value = e.target.value.replace("%", "")
+                      setFilaPorcentajeImp(Number(value) || 0)
+                    }}
+                  />
+                </div>
+                <div className="p-1 border-r border-gray-200 dark:border-zinc-700">
+                  <Input
+                    className="h-8 text-xs"
+                    type="number"
+                    placeholder="0.00"
+                    value={filaQImp || ""}
+                    onChange={(e) => setFilaQImp(Number(e.target.value) || 0)}
+                    readOnly
+                  />
+                </div>
+                <div className="p-1 border-r border-gray-200 dark:border-zinc-700">
+                  <Input
+                    className="h-8 text-xs"
+                    type="text"
+                    placeholder="0%"
+                    value={`${filaPorcentajeFactInd || 0}%`}
+                    onChange={(e) => {
+                      const value = e.target.value.replace("%", "")
+                      setFilaPorcentajeFactInd(Number(value) || 0)
+                    }}
+                  />
+                </div>
+                <div className="p-1 border-r border-gray-200 dark:border-zinc-700">
+                  <Input
+                    className="h-8 text-xs"
+                    type="number"
+                    placeholder="0.00"
+                    value={filaQIndUtild || ""}
+                    onChange={(e) => setFilaQIndUtild(Number(e.target.value) || 0)}
+                    readOnly
+                  />
+                </div>
+                <div className="p-1 border-r border-gray-200 dark:border-zinc-700">
+                  <Input
+                    className="h-8 text-xs"
+                    type="number"
+                    placeholder="0.00"
+                    value={filaTotal || ""}
+                    onChange={(e) => setFilaTotal(Number(e.target.value) || 0)}
+                    readOnly
+                  />
+                </div>
+                <div className="p-1 border-r border-gray-200 dark:border-zinc-700">
+                  <Input
+                    className="h-8 text-xs"
+                    type="number"
+                    placeholder="0.00"
+                    value={filaPU || ""}
+                    onChange={(e) => setFilaPU(Number(e.target.value) || 0)}
+                    readOnly
+                  />
+                </div>
+                <div className="p-1">
+                  <Input
+                    className="h-8 text-xs"
+                    type="text"
+                    placeholder="0%"
+                    value={`${filaPorcentajeIncidencia || 0}%`}
+                    onChange={(e) => {
+                      const value = e.target.value.replace("%", "")
+                      setFilaPorcentajeIncidencia(Number(value) || 0)
+                    }}
+                    readOnly
+                  />
                 </div>
               </div>
             </div>

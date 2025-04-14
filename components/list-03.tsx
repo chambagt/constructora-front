@@ -179,4 +179,3 @@ export default function List03({ items = ITEMS, className }: List03Props) {
     </div>
   )
 }
-

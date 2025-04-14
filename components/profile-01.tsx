@@ -112,4 +112,3 @@ export default function Profile01({
     </div>
   )
 }
-

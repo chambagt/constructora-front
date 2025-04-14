@@ -182,4 +182,3 @@ export default function List02({ activities = ACTIVITIES, className }: List02Pro
     </div>
   )
 }
-

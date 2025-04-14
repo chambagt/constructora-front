@@ -68,4 +68,3 @@ export function Settings() {
     </div>
   )
 }
-
