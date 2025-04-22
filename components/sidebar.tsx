@@ -21,6 +21,8 @@ import {
   HardHat,
   FileText,
   LogOut,
+  DollarSign,
+  Calculator,
 } from "lucide-react"
 
 import Link from "next/link"
@@ -91,6 +93,7 @@ export default function Sidebar() {
     hasSubItems = false,
     isSubItem = false,
     onClick,
+    className = "",
   }: {
     href: string
     icon: any
@@ -98,6 +101,7 @@ export default function Sidebar() {
     hasSubItems?: boolean
     isSubItem?: boolean
     onClick?: (e: React.MouseEvent) => void
+    className?: string
   }) {
     const handleClick = (e: React.MouseEvent) => {
       if (hasSubItems) {
@@ -117,7 +121,7 @@ export default function Sidebar() {
         onClick={handleClick}
         className={`flex items-center px-3 py-2 text-sm rounded-md transition-colors text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white hover:bg-gray-50 dark:hover:bg-[#1F1F23] ${
           isSubItem ? "pl-10" : ""
-        }`}
+        } ${className}`}
       >
         {Icon && <Icon className="h-4 w-4 mr-3 flex-shrink-0" />}
         {children}
@@ -216,15 +220,18 @@ export default function Sidebar() {
                             {/* Subproyectos (presupuesto y venta) */}
                             {proyectosExpandidos.includes(proyecto.id) && (
                               <div className="ml-2 space-y-1 border-l-2 border-gray-200 dark:border-[#1F1F23]">
+                                {/* Proyecto Presupuesto (RF) */}
                                 <NavItem
-                                  href={`/proyectos/${proyecto.id}-presupuesto`}
-                                  icon={() => null}
+                                  href={`/proyectos/${proyecto.id}/presupuesto`}
+                                  icon={Calculator}
                                   isSubItem={true}
                                 >
-                                  Presupuesto
+                                  Presupuesto (RF)
                                 </NavItem>
-                                <NavItem href={`/proyectos/${proyecto.id}-venta`} icon={() => null} isSubItem={true}>
-                                  Venta
+
+                                {/* Proyecto Venta (RF) */}
+                                <NavItem href={`/proyectos/${proyecto.id}/venta`} icon={DollarSign} isSubItem={true}>
+                                  Venta (RF)
                                 </NavItem>
                               </div>
                             )}

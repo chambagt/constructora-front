@@ -6,6 +6,7 @@ import { PlusCircle, FileText } from "lucide-react"
 import { NuevaCedula } from "@/components/kokonutui/nueva-cedula"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { DetalleCedula } from "@/components/kokonutui/detalle-cedula"
+import { useRouter } from "next/navigation"
 
 // Tipo para la cédula
 type Cedula = {
@@ -20,6 +21,7 @@ export default function CedulasPage() {
   const [mostrarNuevaCedula, setMostrarNuevaCedula] = useState(false)
   const [cedulasGuardadas, setCedulasGuardadas] = useState<Cedula[]>([])
   const [cedulaSeleccionada, setCedulaSeleccionada] = useState<string | null>(null)
+  const router = useRouter()
 
   // Cargar cédulas guardadas del localStorage
   useEffect(() => {
@@ -29,9 +31,9 @@ export default function CedulasPage() {
     }
   }, [mostrarNuevaCedula]) // Actualizar cuando se cierra/abre el formulario de nueva cédula
 
-  // Función para ver detalles de una cédula
-  const verDetalleCedula = (id: string) => {
-    setCedulaSeleccionada(id)
+  // Añadir una función para ver el detalle de una cédula
+  const verDetalleCedula = (cedulaId: string) => {
+    router.push(`/cedulas/${cedulaId}`)
   }
 
   // Función para volver a la lista de cédulas

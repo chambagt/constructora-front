@@ -27,7 +27,7 @@ type ElementoCedula = {
   mxHora?: number
 }
 
-// Tipo para la cédula completa
+// Actualizar el tipo Cedula para incluir la información de la fila de tarea
 type Cedula = {
   id: string
   nombre: string
@@ -39,6 +39,11 @@ type Cedula = {
   ubicacion?: string
   responsable?: string
   notas?: string
+  filaTarea?: string
+  filaDescripcion?: string
+  filaUnidad?: string
+  filaCantidad?: number
+  filaRendUnidad?: number
 }
 
 interface DetalleCedulaProps {
@@ -121,106 +126,114 @@ export function DetalleCedula({ cedulaId, onBack }: DetalleCedulaProps) {
   const porcentajeManoObra = subtotalCedula > 0 ? (totalManoObra / subtotalCedula) * 100 : 0
   const porcentajeEquipos = subtotalCedula > 0 ? (totalEquipos / subtotalCedula) * 100 : 0
 
-  // Renderizar tabla de elementos por familia
+  // Modificar la función renderTablaElementos para usar el mismo estilo compacto que en NuevaCedula
   const renderTablaElementos = (elementos: ElementoCedula[], titulo: string, icono: React.ReactNode) => {
     if (elementos.length === 0) return null
 
     // Si es equipamiento, mostrar tabla con estructura diferente
     if (titulo.includes("Equipamiento")) {
       return (
-        <div className="mb-6">
+        <div className="mb-4">
           <div className="flex items-center mb-2">
             {icono}
-            <h3 className="text-lg font-medium ml-2">{titulo}</h3>
+            <h3 className="text-sm font-medium ml-2">{titulo}</h3>
           </div>
           <div className="overflow-x-auto">
-            <table className="w-full">
+            <table className="w-full border border-gray-200 dark:border-zinc-700 text-[10px]">
               <thead>
-                <tr className="bg-gray-50 dark:bg-zinc-700">
-                  <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                <tr className="bg-gray-50 dark:bg-zinc-700 h-4">
+                  <th className="px-0.5 py-0 text-left text-[9px] font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider border-r border-gray-200 dark:border-zinc-700">
                     Código
                   </th>
-                  <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                  <th className="px-0.5 py-0 text-left text-[9px] font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider border-r border-gray-200 dark:border-zinc-700">
                     Familia
                   </th>
-                  <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                  <th className="px-0.5 py-0 text-left text-[9px] font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider border-r border-gray-200 dark:border-zinc-700">
                     Descripción
                   </th>
-                  <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                  <th className="px-0.5 py-0 text-left text-[9px] font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider border-r border-gray-200 dark:border-zinc-700">
                     Rend/hora
                   </th>
-                  <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                  <th className="px-0.5 py-0 text-left text-[9px] font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider border-r border-gray-200 dark:border-zinc-700">
                     Mx/hora
                   </th>
-                  <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                  <th className="px-0.5 py-0 text-left text-[9px] font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider border-r border-gray-200 dark:border-zinc-700">
                     Unidad
                   </th>
-                  <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                  <th className="px-0.5 py-0 text-left text-[9px] font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider border-r border-gray-200 dark:border-zinc-700">
                     Rend/Unidad
                   </th>
-                  <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                  <th className="px-0.5 py-0 text-left text-[9px] font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider border-r border-gray-200 dark:border-zinc-700">
                     Total insumos
                   </th>
-                  <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                  <th className="px-0.5 py-0 text-left text-[9px] font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider border-r border-gray-200 dark:border-zinc-700">
                     Costo
                   </th>
-                  <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                  <th className="px-0.5 py-0 text-left text-[9px] font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider border-r border-gray-200 dark:border-zinc-700">
                     Costo global
                   </th>
-                  <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                  <th className="px-0.5 py-0 text-left text-[9px] font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider border-r border-gray-200 dark:border-zinc-700">
                     Costo unidad
                   </th>
-                  <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                  <th className="px-0.5 py-0 text-left text-[9px] font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider border-r border-gray-200 dark:border-zinc-700">
                     %
                   </th>
                 </tr>
               </thead>
-              <tbody className="bg-white dark:bg-zinc-800 divide-y divide-gray-200 dark:divide-zinc-700">
+              <tbody className="bg-white dark:bg-zinc-800 divide-y-0 divide-gray-200 dark:divide-zinc-700">
                 {elementos.map((elemento) => (
-                  <tr key={elemento.id} className="hover:bg-gray-50 dark:hover:bg-zinc-700">
-                    <td className="px-4 py-2 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-white">
+                  <tr
+                    key={elemento.id}
+                    className="hover:bg-gray-50 dark:hover:bg-zinc-700 border-b border-gray-200 dark:border-zinc-700 h-5 leading-none"
+                  >
+                    <td className="px-0.5 py-0 whitespace-nowrap text-[10px] font-medium text-gray-900 dark:text-white border-r border-gray-200 dark:border-zinc-700">
                       {elemento.codigo}
                     </td>
-                    <td className="px-4 py-2 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">
+                    <td className="px-0.5 py-0 whitespace-nowrap text-[10px] text-gray-500 dark:text-gray-300 border-r border-gray-200 dark:border-zinc-700">
                       {elemento.familia}
                     </td>
-                    <td className="px-4 py-2 text-sm text-gray-500 dark:text-gray-300">{elemento.descripcion}</td>
-                    <td className="px-4 py-2 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">
+                    <td className="px-0.5 py-0 text-[10px] text-gray-500 dark:text-gray-300 border-r border-gray-200 dark:border-zinc-700">
+                      {elemento.descripcion}
+                    </td>
+                    <td className="px-0.5 py-0 whitespace-nowrap text-[10px] text-gray-500 dark:text-gray-300 border-r border-gray-200 dark:border-zinc-700">
                       {elemento.rendHora || 1}
                     </td>
-                    <td className="px-4 py-2 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">
+                    <td className="px-0.5 py-0 whitespace-nowrap text-[10px] text-gray-500 dark:text-gray-300 border-r border-gray-200 dark:border-zinc-700">
                       {elemento.mxHora || 0}
                     </td>
-                    <td className="px-4 py-2 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">
+                    <td className="px-0.5 py-0 whitespace-nowrap text-[10px] text-gray-500 dark:text-gray-300 border-r border-gray-200 dark:border-zinc-700">
                       {elemento.unidad}
                     </td>
-                    <td className="px-4 py-2 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">
+                    <td className="px-0.5 py-0 whitespace-nowrap text-[10px] text-gray-500 dark:text-gray-300 border-r border-gray-200 dark:border-zinc-700">
                       {elemento.rendimiento || 1}
                     </td>
-                    <td className="px-4 py-2 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">
+                    <td className="px-0.5 py-0 whitespace-nowrap text-[10px] text-gray-500 dark:text-gray-300 border-r border-gray-200 dark:border-zinc-700">
                       {elemento.total.toFixed(2)}
                     </td>
-                    <td className="px-4 py-2 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">
+                    <td className="px-0.5 py-0 whitespace-nowrap text-[10px] text-gray-500 dark:text-gray-300 border-r border-gray-200 dark:border-zinc-700">
                       Q{elemento.precio.toFixed(2)}
                     </td>
-                    <td className="px-4 py-2 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">
+                    <td className="px-0.5 py-0 whitespace-nowrap text-[10px] text-gray-500 dark:text-gray-300 border-r border-gray-200 dark:border-zinc-700">
                       Q{elemento.costoGlobal?.toFixed(2) || (elemento.precio * elemento.cantidad).toFixed(2)}
                     </td>
-                    <td className="px-4 py-2 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">
+                    <td className="px-0.5 py-0 whitespace-nowrap text-[10px] text-gray-500 dark:text-gray-300 border-r border-gray-200 dark:border-zinc-700">
                       Q
                       {elemento.costoUnidad?.toFixed(2) ||
                         ((elemento.precio * elemento.cantidad) / (elemento.rendimiento || 1)).toFixed(2)}
                     </td>
-                    <td className="px-4 py-2 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">
+                    <td className="px-0.5 py-0 whitespace-nowrap text-[10px] text-gray-500 dark:text-gray-300 border-r border-gray-200 dark:border-zinc-700">
                       {elemento.porcentaje?.toFixed(2) || "0.00"}%
                     </td>
                   </tr>
                 ))}
-                <tr className="bg-gray-50 dark:bg-zinc-700">
-                  <td colSpan={11} className="px-4 py-2 text-right text-sm font-medium text-gray-900 dark:text-white">
+                <tr className="bg-gray-50 dark:bg-zinc-700 h-4">
+                  <td
+                    colSpan={11}
+                    className="px-0.5 py-0 text-right text-[10px] font-medium text-gray-900 dark:text-white border-r border-gray-200 dark:border-zinc-700"
+                  >
                     Subtotal:
                   </td>
-                  <td className="px-4 py-2 text-sm font-bold text-gray-900 dark:text-white">
+                  <td className="px-0.5 py-0 text-[10px] font-bold text-gray-900 dark:text-white">
                     Q{elementos.reduce((sum, elemento) => sum + elemento.total, 0).toFixed(2)}
                   </td>
                 </tr>
@@ -233,87 +246,95 @@ export function DetalleCedula({ cedulaId, onBack }: DetalleCedulaProps) {
 
     // Para materiales y mano de obra, mantener la tabla original
     return (
-      <div className="mb-6">
+      <div className="mb-4">
         <div className="flex items-center mb-2">
           {icono}
-          <h3 className="text-lg font-medium ml-2">{titulo}</h3>
+          <h3 className="text-sm font-medium ml-2">{titulo}</h3>
         </div>
         <div className="overflow-x-auto">
-          <table className="w-full">
+          <table className="w-full border border-gray-200 dark:border-zinc-700 text-[10px]">
             <thead>
-              <tr className="bg-gray-50 dark:bg-zinc-700">
-                <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+              <tr className="bg-gray-50 dark:bg-zinc-700 h-4">
+                <th className="px-0.5 py-0 text-left text-[9px] font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider border-r border-gray-200 dark:border-zinc-700">
                   Código
                 </th>
-                <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                <th className="px-0.5 py-0 text-left text-[9px] font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider border-r border-gray-200 dark:border-zinc-700">
                   Familia
                 </th>
-                <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                <th className="px-0.5 py-0 text-left text-[9px] font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider border-r border-gray-200 dark:border-zinc-700">
                   Descripción
                 </th>
-                <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                <th className="px-0.5 py-0 text-left text-[9px] font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider border-r border-gray-200 dark:border-zinc-700">
                   Unidad
                 </th>
-                <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                <th className="px-0.5 py-0 text-left text-[9px] font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider border-r border-gray-200 dark:border-zinc-700">
                   Rend/Unidad
                 </th>
-                <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                <th className="px-0.5 py-0 text-left text-[9px] font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider border-r border-gray-200 dark:border-zinc-700">
                   Total insumos
                 </th>
-                <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                <th className="px-0.5 py-0 text-left text-[9px] font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider border-r border-gray-200 dark:border-zinc-700">
                   Costo
                 </th>
-                <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                <th className="px-0.5 py-0 text-left text-[9px] font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider border-r border-gray-200 dark:border-zinc-700">
                   Costo global
                 </th>
-                <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                <th className="px-0.5 py-0 text-left text-[9px] font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider border-r border-gray-200 dark:border-zinc-700">
                   Costo unidad
                 </th>
-                <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                <th className="px-0.5 py-0 text-left text-[9px] font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider border-r border-gray-200 dark:border-zinc-700">
                   %
                 </th>
               </tr>
             </thead>
-            <tbody className="bg-white dark:bg-zinc-800 divide-y divide-gray-200 dark:divide-zinc-700">
+            <tbody className="bg-white dark:bg-zinc-800 divide-y-0 divide-gray-200 dark:divide-zinc-700">
               {elementos.map((elemento) => (
-                <tr key={elemento.id} className="hover:bg-gray-50 dark:hover:bg-zinc-700">
-                  <td className="px-4 py-2 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-white">
+                <tr
+                  key={elemento.id}
+                  className="hover:bg-gray-50 dark:hover:bg-zinc-700 border-b border-gray-200 dark:border-zinc-700 h-5 leading-none"
+                >
+                  <td className="px-0.5 py-0 whitespace-nowrap text-[10px] font-medium text-gray-900 dark:text-white border-r border-gray-200 dark:border-zinc-700">
                     {elemento.codigo}
                   </td>
-                  <td className="px-4 py-2 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">
+                  <td className="px-0.5 py-0 whitespace-nowrap text-[10px] text-gray-500 dark:text-gray-300 border-r border-gray-200 dark:border-zinc-700">
                     {elemento.familia}
                   </td>
-                  <td className="px-4 py-2 text-sm text-gray-500 dark:text-gray-300">{elemento.descripcion}</td>
-                  <td className="px-4 py-2 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">
+                  <td className="px-0.5 py-0 text-[10px] text-gray-500 dark:text-gray-300 border-r border-gray-200 dark:border-zinc-700">
+                    {elemento.descripcion}
+                  </td>
+                  <td className="px-0.5 py-0 whitespace-nowrap text-[10px] text-gray-500 dark:text-gray-300 border-r border-gray-200 dark:border-zinc-700">
                     {elemento.unidad}
                   </td>
-                  <td className="px-4 py-2 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">
+                  <td className="px-0.5 py-0 whitespace-nowrap text-[10px] text-gray-500 dark:text-gray-300 border-r border-gray-200 dark:border-zinc-700">
                     {elemento.rendimiento || 1}
                   </td>
-                  <td className="px-4 py-2 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">
+                  <td className="px-0.5 py-0 whitespace-nowrap text-[10px] text-gray-500 dark:text-gray-300 border-r border-gray-200 dark:border-zinc-700">
                     {elemento.total.toFixed(2)}
                   </td>
-                  <td className="px-4 py-2 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">
+                  <td className="px-0.5 py-0 whitespace-nowrap text-[10px] text-gray-500 dark:text-gray-300 border-r border-gray-200 dark:border-zinc-700">
                     Q{elemento.precio.toFixed(2)}
                   </td>
-                  <td className="px-4 py-2 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">
+                  <td className="px-0.5 py-0 whitespace-nowrap text-[10px] text-gray-500 dark:text-gray-300 border-r border-gray-200 dark:border-zinc-700">
                     Q{elemento.costoGlobal?.toFixed(2) || (elemento.precio * elemento.cantidad).toFixed(2)}
                   </td>
-                  <td className="px-4 py-2 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">
+                  <td className="px-0.5 py-0 whitespace-nowrap text-[10px] text-gray-500 dark:text-gray-300 border-r border-gray-200 dark:border-zinc-700">
                     Q
                     {elemento.costoUnidad?.toFixed(2) ||
                       ((elemento.precio * elemento.cantidad) / (elemento.rendimiento || 1)).toFixed(2)}
                   </td>
-                  <td className="px-4 py-2 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">
+                  <td className="px-0.5 py-0 whitespace-nowrap text-[10px] text-gray-500 dark:text-gray-300 border-r border-gray-200 dark:border-zinc-700">
                     {elemento.porcentaje?.toFixed(2) || "0.00"}%
                   </td>
                 </tr>
               ))}
-              <tr className="bg-gray-50 dark:bg-zinc-700">
-                <td colSpan={9} className="px-4 py-2 text-right text-sm font-medium text-gray-900 dark:text-white">
+              <tr className="bg-gray-50 dark:bg-zinc-700 h-4">
+                <td
+                  colSpan={9}
+                  className="px-0.5 py-0 text-right text-[10px] font-medium text-gray-900 dark:text-white border-r border-gray-200 dark:border-zinc-700"
+                >
                   Subtotal:
                 </td>
-                <td className="px-4 py-2 text-sm font-bold text-gray-900 dark:text-white">
+                <td className="px-0.5 py-0 text-[10px] font-bold text-gray-900 dark:text-white">
                   Q{elementos.reduce((sum, elemento) => sum + elemento.total, 0).toFixed(2)}
                 </td>
               </tr>
@@ -347,35 +368,115 @@ export function DetalleCedula({ cedulaId, onBack }: DetalleCedulaProps) {
           {/* Panel de totales sticky */}
           <div className="sticky top-0 z-50 bg-white dark:bg-[#0F0F12] border-b border-gray-200 dark:border-zinc-700 pt-4 pb-4 mt-4">
             <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
-              <div className="flex items-center bg-gray-100 dark:bg-zinc-700 p-3 rounded-md">
-                <Package className="h-5 w-5 text-blue-500 mr-2" />
+              <div className="flex items-center bg-gray-100 dark:bg-zinc-700 p-2 rounded-md">
+                <Package className="h-4 w-4 text-blue-500 mr-2" />
                 <div className="flex flex-col">
-                  <span className="text-xs text-gray-500 dark:text-gray-400">Materiales:</span>
-                  <span className="font-medium text-gray-900 dark:text-white">Q{totalMateriales.toFixed(2)}</span>
+                  <span className="text-[10px] text-gray-500 dark:text-gray-400">Materiales:</span>
+                  <span className="font-medium text-[11px] text-gray-900 dark:text-white">
+                    Q{totalMateriales.toFixed(2)}
+                  </span>
                 </div>
               </div>
-              <div className="flex items-center bg-gray-100 dark:bg-zinc-700 p-3 rounded-md">
-                <HardHat className="h-5 w-5 text-green-500 mr-2" />
+              <div className="flex items-center bg-gray-100 dark:bg-zinc-700 p-2 rounded-md">
+                <HardHat className="h-4 w-4 text-green-500 mr-2" />
                 <div className="flex flex-col">
-                  <span className="text-xs text-gray-500 dark:text-gray-400">Mano de Obra:</span>
-                  <span className="font-medium text-gray-900 dark:text-white">Q{totalManoObra.toFixed(2)}</span>
+                  <span className="text-[10px] text-gray-500 dark:text-gray-400">Mano de Obra:</span>
+                  <span className="font-medium text-[11px] text-gray-900 dark:text-white">
+                    Q{totalManoObra.toFixed(2)}
+                  </span>
                 </div>
               </div>
-              <div className="flex items-center bg-gray-100 dark:bg-zinc-700 p-3 rounded-md">
-                <Truck className="h-5 w-5 text-amber-500 mr-2" />
+              <div className="flex items-center bg-gray-100 dark:bg-zinc-700 p-2 rounded-md">
+                <Truck className="h-4 w-4 text-amber-500 mr-2" />
                 <div className="flex flex-col">
-                  <span className="text-xs text-gray-500 dark:text-gray-400">Equipamiento:</span>
-                  <span className="font-medium text-gray-900 dark:text-white">Q{totalEquipos.toFixed(2)}</span>
+                  <span className="text-[10px] text-gray-500 dark:text-gray-400">Equipamiento:</span>
+                  <span className="font-medium text-[11px] text-gray-900 dark:text-white">
+                    Q{totalEquipos.toFixed(2)}
+                  </span>
                 </div>
               </div>
-              <div className="flex items-center bg-gray-100 dark:bg-zinc-700 p-3 rounded-md">
-                <DollarSign className="h-5 w-5 text-green-500 mr-2" />
+              <div className="flex items-center bg-gray-100 dark:bg-zinc-700 p-2 rounded-md">
+                <DollarSign className="h-4 w-4 text-green-500 mr-2" />
                 <div className="flex flex-col">
-                  <span className="text-xs text-gray-500 dark:text-gray-400">Total de la Cédula:</span>
-                  <span className="font-bold text-gray-900 dark:text-white">Q{cedula.total.toFixed(2)}</span>
+                  <span className="text-[10px] text-gray-500 dark:text-gray-400">Total de la Cédula:</span>
+                  <span className="font-bold text-[11px] text-gray-900 dark:text-white">
+                    Q{cedula.total.toFixed(2)}
+                  </span>
                 </div>
               </div>
             </div>
+
+            {/* Fila de tarea */}
+            {(cedula.filaTarea || cedula.filaDescripcion || cedula.filaUnidad || cedula.filaCantidad) && (
+              <div className="mt-2 border border-gray-200 dark:border-zinc-700 rounded-md overflow-hidden">
+                <div className="grid grid-cols-12 gap-0 bg-gray-50 dark:bg-zinc-800 text-[9px] font-medium text-gray-700 dark:text-gray-300 border-b border-gray-200 dark:border-zinc-700 h-4">
+                  <div className="px-0.5 py-0 border-r border-gray-200 dark:border-zinc-700 flex items-center">
+                    Tarea
+                  </div>
+                  <div className="px-0.5 py-0 border-r border-gray-200 dark:border-zinc-700 flex items-center"></div>
+                  <div className="px-0.5 py-0 border-r border-gray-200 dark:border-zinc-700 flex items-center">
+                    Unidad
+                  </div>
+                  <div className="px-0.5 py-0 border-r border-gray-200 dark:border-zinc-700 flex items-center">
+                    Cant
+                  </div>
+                  <div className="px-0.5 py-0 border-r border-gray-200 dark:border-zinc-700 flex items-center"></div>
+                  <div className="px-0.5 py-0 border-r border-gray-200 dark:border-zinc-700 flex items-center">
+                    %IMP
+                  </div>
+                  <div className="px-0.5 py-0 border-r border-gray-200 dark:border-zinc-700 flex items-center">
+                    Q.IMP
+                  </div>
+                  <div className="px-0.5 py-0 border-r border-gray-200 dark:border-zinc-700 flex items-center">
+                    %FACT IND
+                  </div>
+                  <div className="px-0.5 py-0 border-r border-gray-200 dark:border-zinc-700 flex items-center">
+                    Q.IND.UTILD
+                  </div>
+                  <div className="px-0.5 py-0 border-r border-gray-200 dark:border-zinc-700 flex items-center">
+                    TOTAL
+                  </div>
+                  <div className="px-0.5 py-0 border-r border-gray-200 dark:border-zinc-700 flex items-center">P/U</div>
+                  <div className="px-0.5 py-0 flex items-center">%INCIDENCIA</div>
+                </div>
+                <div className="grid grid-cols-12 gap-0 bg-white dark:bg-zinc-900 h-5">
+                  <div className="p-0 border-r border-gray-200 dark:border-zinc-700 px-0.5 py-0 text-[10px] flex items-center">
+                    {cedula.filaTarea || "-"}
+                  </div>
+                  <div className="p-0 border-r border-gray-200 dark:border-zinc-700 px-0.5 py-0 text-[10px] flex items-center">
+                    {cedula.filaDescripcion || "-"}
+                  </div>
+                  <div className="p-0 border-r border-gray-200 dark:border-zinc-700 px-0.5 py-0 text-[10px] flex items-center">
+                    {cedula.filaUnidad || "-"}
+                  </div>
+                  <div className="p-0 border-r border-gray-200 dark:border-zinc-700 px-0.5 py-0 text-[10px] flex items-center">
+                    {cedula.filaCantidad || "0"}
+                  </div>
+                  <div className="p-0 border-r border-gray-200 dark:border-zinc-700 px-0.5 py-0 text-[10px] flex items-center">
+                    -
+                  </div>
+                  <div className="p-0 border-r border-gray-200 dark:border-zinc-700 px-0.5 py-0 text-[10px] flex items-center">
+                    -
+                  </div>
+                  <div className="p-0 border-r border-gray-200 dark:border-zinc-700 px-0.5 py-0 text-[10px] flex items-center">
+                    -
+                  </div>
+                  <div className="p-0 border-r border-gray-200 dark:border-zinc-700 px-0.5 py-0 text-[10px] flex items-center">
+                    -
+                  </div>
+                  <div className="p-0 border-r border-gray-200 dark:border-zinc-700 px-0.5 py-0 text-[10px] flex items-center">
+                    -
+                  </div>
+                  <div className="p-0 border-r border-gray-200 dark:border-zinc-700 px-0.5 py-0 text-[10px] flex items-center">
+                    -
+                  </div>
+                  <div className="p-0 border-r border-gray-200 dark:border-zinc-700 px-0.5 py-0 text-[10px] flex items-center">
+                    -
+                  </div>
+                  <div className="p-0 px-0.5 py-0 text-[10px] flex items-center">-</div>
+                </div>
+              </div>
+            )}
           </div>
         </CardHeader>
         <CardContent>

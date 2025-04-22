@@ -23,6 +23,7 @@ import { Textarea } from "@/components/ui/textarea"
 import { useToast } from "@/hooks/use-toast"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { useRouter } from "next/navigation"
 
 // Tipos para los diferentes elementos
 type Material = {
@@ -71,7 +72,7 @@ type ElementoCedula = {
   mxHora?: number
 }
 
-// Tipo para la cédula completa
+// Modificar el tipo Cedula para incluir la información de la fila de tarea
 type Cedula = {
   id: string
   nombre: string
@@ -83,6 +84,11 @@ type Cedula = {
   ubicacion?: string
   responsable?: string
   notas?: string
+  filaTarea?: string
+  filaDescripcion?: string
+  filaUnidad?: string
+  filaCantidad?: number
+  filaRendUnidad?: number
 }
 
 // Datos de ejemplo
@@ -206,16 +212,24 @@ const proyectosEjemplo = [
   { id: "5", nombre: "Hospital Regional" },
 ]
 
-export function NuevaCedula() {
+interface NuevaCedulaProps {
+  rfId?: string | null
+  proyectoId?: string | null
+  tipo?: string | null
+}
+
+export function NuevaCedula({ rfId, proyectoId, tipo }: NuevaCedulaProps) {
   const { toast } = useToast()
+  const router = useRouter()
   const [nombreCedula, setNombreCedula] = useState("Nueva Cédula")
-  const [familiaActiva, setFamiliaActiva] = useState<"MT" | "MO" | "EQ" | null>(null)
-  const [busqueda, setBusqueda] = useState("")
+  const [busquedaMT, setBusquedaMT] = useState("")
+  const [busquedaMO, setBusquedaMO] = useState("")
+  const [busquedaEQ, setBusquedaEQ] = useState("")
   const [elementosSeleccionados, setElementosSeleccionados] = useState<ElementoCedula[]>([])
   const [cedulaGuardada, setCedulaGuardada] = useState(false)
 
   // Información adicional de la cédula
-  const [proyecto, setProyecto] = useState("")
+  const [proyecto, setProyecto] = useState(proyectoId || "")
   const [cliente, setCliente] = useState("")
   const [ubicacion, setUbicacion] = useState("")
   const [responsable, setResponsable] = useState("")
@@ -295,12 +309,13 @@ export function NuevaCedula() {
     }
   }, [elementosSeleccionados.length, totalCedula])
 
-  // Función para guardar la cédula
+  // Modificar la función guardarCedula para incluir una redirección al detalle de la cédula
   const guardarCedula = () => {
     try {
       // Crear objeto de cédula
+      const cedulaId = Date.now().toString() // Generar un ID único basado en la fecha actual
       const cedula: Cedula = {
-        id: Date.now().toString(), // Generar un ID único basado en la fecha actual
+        id: cedulaId,
         nombre: nombreCedula,
         fecha: new Date().toISOString(),
         elementos: elementosSeleccionados,
@@ -310,6 +325,12 @@ export function NuevaCedula() {
         ubicacion,
         responsable,
         notas,
+        // Guardar la información de la fila de tarea
+        filaTarea,
+        filaDescripcion,
+        filaUnidad,
+        filaCantidad,
+        filaRendUnidad,
       }
 
       // En una aplicación real, aquí enviaríamos la cédula al backend
@@ -327,6 +348,42 @@ export function NuevaCedula() {
         const cedulasGuardadas = JSON.parse(localStorage.getItem("cedulas") || "[]")
         cedulasGuardadas.push(cedula)
         localStorage.setItem("cedulas", JSON.stringify(cedulasGuardadas))
+
+        // Si hay un rfId, asociar la cédula al RF y redirigir
+        if (rfId && proyectoId && tipo) {
+          // Obtener los resúmenes financieros
+          const resumenesGuardados = JSON.parse(localStorage.getItem("resumenesFinancieros") || "[]")
+          const resumenEncontrado = resumenesGuardados.find(
+            (r: any) => r.id === rfId && r.proyectoId === proyectoId && r.tipo === tipo,
+          )
+
+          if (resumenEncontrado) {
+            // Actualizar el RF con la nueva cédula asociada
+            const rfActualizado = {
+              ...resumenEncontrado,
+              cedulasAsociadas: [...resumenEncontrado.cedulasAsociadas, cedulaId],
+            }
+
+            // Guardar en localStorage
+            const resumenesActualizados = resumenesGuardados.map((r: any) => (r.id === rfId ? rfActualizado : r))
+            localStorage.setItem("resumenesFinancieros", JSON.stringify(resumenesActualizados))
+
+            // Redirigir a la página del RF
+            setTimeout(() => {
+              window.location.href = `/proyectos/${proyectoId}/${tipo}`
+            }, 500)
+          } else {
+            // Si no se encuentra el RF, redirigir a la página de detalle de la cédula
+            setTimeout(() => {
+              router.push(`/cedulas/${cedulaId}`)
+            }, 500)
+          }
+        } else {
+          // Si no hay rfId, redirigir a la página de detalle de la cédula
+          setTimeout(() => {
+            router.push(`/cedulas/${cedulaId}`)
+          }, 500)
+        }
       }
     } catch (error) {
       console.error("Error al guardar la cédula:", error)
@@ -337,31 +394,37 @@ export function NuevaCedula() {
     }
   }
 
+  // Resto del código del componente...
+  // (Mantener el resto del componente igual)
+
   // Función para filtrar elementos según la búsqueda
-  const filtrarElementos = (busqueda: string) => {
-    if (familiaActiva === "MT") {
-      return materialesEjemplo.filter(
-        (material) =>
-          material.codigo.toLowerCase().includes(busqueda.toLowerCase()) ||
-          material.nombre.toLowerCase().includes(busqueda.toLowerCase()),
-      )
-    } else if (familiaActiva === "MO") {
-      return manoObraEjemplo.filter(
-        (manoObra) =>
-          manoObra.codigo.toLowerCase().includes(busqueda.toLowerCase()) ||
-          manoObra.trabajo.toLowerCase().includes(busqueda.toLowerCase()),
-      )
-    } else if (familiaActiva === "EQ") {
-      return equiposEjemplo.filter(
-        (equipo) =>
-          equipo.codigo.toLowerCase().includes(busqueda.toLowerCase()) ||
-          equipo.nombre.toLowerCase().includes(busqueda.toLowerCase()),
-      )
-    }
-    return []
+  const filtrarMateriales = (busqueda: string) => {
+    return materialesEjemplo.filter(
+      (material) =>
+        material.codigo.toLowerCase().includes(busqueda.toLowerCase()) ||
+        material.nombre.toLowerCase().includes(busqueda.toLowerCase()),
+    )
   }
 
-  const elementosFiltrados = filtrarElementos(busqueda)
+  const filtrarManoObra = (busqueda: string) => {
+    return manoObraEjemplo.filter(
+      (manoObra) =>
+        manoObra.codigo.toLowerCase().includes(busqueda.toLowerCase()) ||
+        manoObra.trabajo.toLowerCase().includes(busqueda.toLowerCase()),
+    )
+  }
+
+  const filtrarEquipos = (busqueda: string) => {
+    return equiposEjemplo.filter(
+      (equipo) =>
+        equipo.codigo.toLowerCase().includes(busqueda.toLowerCase()) ||
+        equipo.nombre.toLowerCase().includes(busqueda.toLowerCase()),
+    )
+  }
+
+  const materialesFiltrados = filtrarMateriales(busquedaMT)
+  const manoObraFiltrada = filtrarManoObra(busquedaMO)
+  const equiposFiltrados = filtrarEquipos(busquedaEQ)
 
   // Modificar la función agregarElemento para incluir los nuevos campos para equipamiento
   const agregarElemento = (tipo: "MT" | "MO" | "EQ", id: string) => {
@@ -390,6 +453,8 @@ export function NuevaCedula() {
         }
         setElementosSeleccionados([...elementosSeleccionados, nuevoElemento])
       }
+      // Limpiar búsqueda después de agregar
+      setBusquedaMT("")
     } else if (tipo === "MO") {
       elemento = manoObraEjemplo.find((m) => m.id === id)
       if (elemento) {
@@ -413,6 +478,8 @@ export function NuevaCedula() {
         }
         setElementosSeleccionados([...elementosSeleccionados, nuevoElemento])
       }
+      // Limpiar búsqueda después de agregar
+      setBusquedaMO("")
     } else if (tipo === "EQ") {
       elemento = equiposEjemplo.find((e) => e.id === id)
       if (elemento) {
@@ -439,9 +506,9 @@ export function NuevaCedula() {
         }
         setElementosSeleccionados([...elementosSeleccionados, nuevoElemento])
       }
+      // Limpiar búsqueda después de agregar
+      setBusquedaEQ("")
     }
-    // Limpiar búsqueda después de agregar
-    setBusqueda("")
   }
 
   // Función para actualizar la cantidad de un elemento
@@ -619,144 +686,146 @@ export function NuevaCedula() {
     // Si es equipamiento, mostrar tabla con estructura diferente
     if (titulo.includes("Equipamiento")) {
       return (
-        <div className="mb-6">
-          <div className="flex items-center mb-2">
-            {icono}
-            <h3 className="text-lg font-medium ml-2">{titulo}</h3>
-          </div>
+        <div className="mb-4">
           <div className="overflow-x-auto">
-            <table className="w-full">
+            <table className="w-full border border-gray-200 dark:border-zinc-700 text-[10px]">
               <thead>
-                <tr className="bg-gray-50 dark:bg-zinc-700">
-                  <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                <tr className="bg-gray-50 dark:bg-zinc-700 h-4">
+                  <th className="px-0.5 py-0 text-left text-[9px] font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider border-r border-gray-200 dark:border-zinc-700">
                     Código
                   </th>
-                  <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                  <th className="px-0.5 py-0 text-left text-[9px] font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider border-r border-gray-200 dark:border-zinc-700">
                     Familia
                   </th>
-                  <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                  <th className="px-0.5 py-0 text-left text-[9px] font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider border-r border-gray-200 dark:border-zinc-700">
                     Descripción
                   </th>
-                  <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                  <th className="px-0.5 py-0 text-left text-[9px] font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider border-r border-gray-200 dark:border-zinc-700">
                     Rend/hora
                   </th>
-                  <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                  <th className="px-0.5 py-0 text-left text-[9px] font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider border-r border-gray-200 dark:border-zinc-700">
                     Mx/hora
                   </th>
-                  <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                  <th className="px-0.5 py-0 text-left text-[9px] font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider border-r border-gray-200 dark:border-zinc-700">
                     Unidad
                   </th>
-                  <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                  <th className="px-0.5 py-0 text-left text-[9px] font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider border-r border-gray-200 dark:border-zinc-700">
                     Rend/Unidad
                   </th>
-                  <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                  <th className="px-0.5 py-0 text-left text-[9px] font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider border-r border-gray-200 dark:border-zinc-700">
                     Total insumos
                   </th>
-                  <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                  <th className="px-0.5 py-0 text-left text-[9px] font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider border-r border-gray-200 dark:border-zinc-700">
                     Costo
                   </th>
-                  <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                  <th className="px-0.5 py-0 text-left text-[9px] font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider border-r border-gray-200 dark:border-zinc-700">
                     Costo global
                   </th>
-                  <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                  <th className="px-0.5 py-0 text-left text-[9px] font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider border-r border-gray-200 dark:border-zinc-700">
                     Costo unidad
                   </th>
-                  <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                  <th className="px-0.5 py-0 text-left text-[9px] font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider border-r border-gray-200 dark:border-zinc-700">
                     %
                   </th>
-                  <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                  <th className="px-0.5 py-0 text-left text-[9px] font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider border-r border-gray-200 dark:border-zinc-700">
                     Acciones
                   </th>
                 </tr>
               </thead>
-              <tbody className="bg-white dark:bg-zinc-800 divide-y divide-gray-200 dark:divide-zinc-700">
+              <tbody className="bg-white dark:bg-zinc-800 divide-y-0 divide-gray-200 dark:divide-zinc-700">
                 {elementos.map((elemento) => (
-                  <tr key={elemento.id} className="hover:bg-gray-50 dark:hover:bg-zinc-700">
-                    <td className="px-4 py-2 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-white">
+                  <tr
+                    key={elemento.id}
+                    className="hover:bg-gray-50 dark:hover:bg-zinc-700 border-b border-gray-200 dark:border-zinc-700 h-5 leading-none"
+                  >
+                    <td className="px-0.5 py-0 whitespace-nowrap text-[10px] font-medium text-gray-900 dark:text-white border-r border-gray-200 dark:border-zinc-700">
                       {elemento.codigo}
                     </td>
-                    <td className="px-4 py-2 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">
+                    <td className="px-0.5 py-0 whitespace-nowrap text-[10px] text-gray-500 dark:text-gray-300 border-r border-gray-200 dark:border-zinc-700">
                       {elemento.familia}
                     </td>
-                    <td className="px-4 py-2 text-sm text-gray-500 dark:text-gray-300">
+                    <td className="px-0.5 py-0 text-[10px] text-gray-500 dark:text-gray-300 border-r border-gray-200 dark:border-zinc-700">
                       <Textarea
                         value={elemento.descripcion}
                         onChange={(e) => actualizarDescripcion(elemento.id, e.target.value)}
-                        className="min-h-[60px] w-full text-sm"
+                        className="min-h-[18px] h-4 w-full text-[10px] p-0.5 resize-none leading-tight"
                       />
                     </td>
-                    <td className="px-4 py-2 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">
+                    <td className="px-0.5 py-0 whitespace-nowrap text-[10px] text-gray-500 dark:text-gray-300 border-r border-gray-200 dark:border-zinc-700">
                       <Input
                         type="number"
                         min="0.01"
                         step="0.01"
                         value={elemento.rendHora || 1}
                         onChange={(e) => actualizarRendHora(elemento.id, Number.parseFloat(e.target.value) || 1)}
-                        className="w-20 h-8 text-sm"
+                        className="w-12 h-4 text-[10px] px-0.5 py-0 leading-none"
                       />
                     </td>
-                    <td className="px-4 py-2 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">
+                    <td className="px-0.5 py-0 whitespace-nowrap text-[10px] text-gray-500 dark:text-gray-300 border-r border-gray-200 dark:border-zinc-700">
                       <Input
                         type="number"
                         min="0"
                         step="0.01"
                         value={elemento.mxHora || 0}
                         onChange={(e) => actualizarMxHora(elemento.id, Number.parseFloat(e.target.value) || 0)}
-                        className="w-20 h-8 text-sm"
+                        className="w-12 h-4 text-[10px] px-0.5 py-0 leading-none"
                       />
                     </td>
-                    <td className="px-4 py-2 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">
+                    <td className="px-0.5 py-0 whitespace-nowrap text-[10px] text-gray-500 dark:text-gray-300 border-r border-gray-200 dark:border-zinc-700">
                       <Input
                         type="text"
                         value={elemento.unidad}
                         onChange={(e) => actualizarUnidad(elemento.id, e.target.value)}
-                        className="w-20 h-8 text-sm"
+                        className="w-12 h-4 text-[10px] px-0.5 py-0 leading-none"
                       />
                     </td>
-                    <td className="px-4 py-2 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">
+                    <td className="px-0.5 py-0 whitespace-nowrap text-[10px] text-gray-500 dark:text-gray-300 border-r border-gray-200 dark:border-zinc-700">
                       <Input
                         type="number"
                         min="0.01"
                         step="0.01"
                         value={elemento.rendimiento || 1}
                         onChange={(e) => actualizarRendimiento(elemento.id, Number.parseFloat(e.target.value) || 1)}
-                        className="w-20 h-8 text-sm"
+                        className="w-12 h-4 text-[10px] px-0.5 py-0 leading-none"
                       />
                     </td>
-                    <td className="px-4 py-2 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">
+                    <td className="px-0.5 py-0 whitespace-nowrap text-[10px] text-gray-500 dark:text-gray-300 border-r border-gray-200 dark:border-zinc-700">
                       {elemento.total.toFixed(2)}
                     </td>
-                    <td className="px-4 py-2 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">
+                    <td className="px-0.5 py-0 whitespace-nowrap text-[10px] text-gray-500 dark:text-gray-300 border-r border-gray-200 dark:border-zinc-700">
                       <Input
                         type="number"
                         min="0"
                         step="0.01"
                         value={elemento.precio}
                         onChange={(e) => actualizarPrecio(elemento.id, Number.parseFloat(e.target.value) || 0)}
-                        className="w-24 h-8 text-sm"
+                        className="w-12 h-4 text-[10px] px-0.5 py-0 leading-none"
                       />
                     </td>
-                    <td className="px-4 py-2 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">
+                    <td className="px-0.5 py-0 whitespace-nowrap text-[10px] text-gray-500 dark:text-gray-300 border-r border-gray-200 dark:border-zinc-700">
                       Q{elemento.precio * elemento.total}
                     </td>
-                    <td className="px-4 py-2 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">
+                    <td className="px-0.5 py-0 whitespace-nowrap text-[10px] text-gray-500 dark:text-gray-300 border-r border-gray-200 dark:border-zinc-700">
                       Q{elemento.costoUnidad?.toFixed(2) || (elemento.precio * (elemento.rendimiento || 1)).toFixed(2)}
                     </td>
-                    <td className="px-4 py-2 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">
+                    <td className="px-0.5 py-0 whitespace-nowrap text-[10px] text-gray-500 dark:text-gray-300 border-r border-gray-200 dark:border-zinc-700">
                       {elemento.porcentaje?.toFixed(2) || "0.00"}%
                     </td>
-                    <td className="px-4 py-2 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">
+                    <td className="px-0.5 py-0 whitespace-nowrap text-[10px] text-gray-500 dark:text-gray-300 border-r border-gray-200 dark:border-zinc-700">
                       <button onClick={() => eliminarElemento(elemento.id)} className="text-red-500 hover:text-red-700">
-                        <X className="h-4 w-4" />
+                        <X className="h-2.5 w-2.5" />
                       </button>
                     </td>
                   </tr>
                 ))}
-                <tr className="bg-gray-50 dark:bg-zinc-700">
-                  <td colSpan={12} className="px-4 py-2 text-right text-sm font-medium text-gray-900 dark:text-white">
+                <tr className="bg-gray-50 dark:bg-zinc-700 h-4">
+                  <td
+                    colSpan={12}
+                    className="px-0.5 py-0 text-right text-[10px] font-medium text-gray-900 dark:text-white border-r border-gray-200 dark:border-zinc-700"
+                  >
                     Subtotal:
                   </td>
-                  <td className="px-4 py-2 text-sm font-bold text-gray-900 dark:text-white">
+                  <td className="px-0.5 py-0 text-[10px] font-bold text-gray-900 dark:text-white">
                     Q{elementos.reduce((sum, elemento) => sum + elemento.total, 0).toFixed(2)}
                   </td>
                 </tr>
@@ -769,118 +838,117 @@ export function NuevaCedula() {
 
     // Para materiales y mano de obra, mantener la tabla original
     return (
-      <div className="mb-6">
-        <div className="flex items-center mb-2">
-          {icono}
-          <h3 className="text-lg font-medium ml-2">{titulo}</h3>
-        </div>
+      <div className="mb-4">
         <div className="overflow-x-auto">
-          <table className="w-full">
+          <table className="w-full border border-gray-200 dark:border-zinc-700 text-[10px]">
             <thead>
-              <tr className="bg-gray-50 dark:bg-zinc-700">
-                <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+              <tr className="bg-gray-50 dark:bg-zinc-700 h-4">
+                <th className="px-0.5 py-0 text-left text-[9px] font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider border-r border-gray-200 dark:border-zinc-700">
                   Código
                 </th>
-                <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                <th className="px-0.5 py-0 text-left text-[9px] font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider border-r border-gray-200 dark:border-zinc-700">
                   Familia
                 </th>
-                <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                <th className="px-0.5 py-0 text-left text-[9px] font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider border-r border-gray-200 dark:border-zinc-700">
                   Descripción
                 </th>
-                <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                <th className="px-0.5 py-0 text-left text-[9px] font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider border-r border-gray-200 dark:border-zinc-700">
                   Unidad
                 </th>
-                <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                <th className="px-0.5 py-0 text-left text-[9px] font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider border-r border-gray-200 dark:border-zinc-700">
                   Rend/Unidad
                 </th>
-                <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                <th className="px-0.5 py-0 text-left text-[9px] font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider border-r border-gray-200 dark:border-zinc-700">
                   Total insumos
                 </th>
-                <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                <th className="px-0.5 py-0 text-left text-[9px] font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider border-r border-gray-200 dark:border-zinc-700">
                   Costo
                 </th>
-                <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                <th className="px-0.5 py-0 text-left text-[9px] font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider border-r border-gray-200 dark:border-zinc-700">
                   Costo global
                 </th>
-                <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                <th className="px-0.5 py-0 text-left text-[9px] font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider border-r border-gray-200 dark:border-zinc-700">
                   Costo unidad
                 </th>
-                <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                <th className="px-0.5 py-0 text-left text-[9px] font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider border-r border-gray-200 dark:border-zinc-700">
                   %
                 </th>
-                <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                <th className="px-0.5 py-0 text-left text-[9px] font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider border-r border-gray-200 dark:border-zinc-700">
                   Acciones
                 </th>
               </tr>
             </thead>
-            <tbody className="bg-white dark:bg-zinc-800 divide-y divide-gray-200 dark:divide-zinc-700">
+            <tbody className="bg-white dark:bg-zinc-800 divide-y-0 divide-gray-200 dark:divide-zinc-700">
               {elementos.map((elemento) => (
-                <tr key={elemento.id} className="hover:bg-gray-50 dark:hover:bg-zinc-700">
-                  <td className="px-4 py-2 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-white">
+                <tr
+                  key={elemento.id}
+                  className="hover:bg-gray-50 dark:hover:bg-zinc-700 border-b border-gray-200 dark:border-zinc-700 h-5 leading-none"
+                >
+                  <td className="px-0.5 py-0 whitespace-nowrap text-[10px] font-medium text-gray-900 dark:text-white border-r border-gray-200 dark:border-zinc-700">
                     {elemento.codigo}
                   </td>
-                  <td className="px-4 py-2 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">
-                    {elemento.familia}
-                  </td>
-                  <td className="px-4 py-2 text-sm text-gray-500 dark:text-gray-300">
+                  <td className="px-0.5 py-0 whitespace-nowrap text-[10px] text-gray-500 dark:text-gray-300 border-r border-gray-200 dark:border-zinc-700">
                     <Textarea
                       value={elemento.descripcion}
                       onChange={(e) => actualizarDescripcion(elemento.id, e.target.value)}
-                      className="min-h-[60px] w-full text-sm"
+                      className="min-h-[18px] h-4 w-full text-[10px] p-0.5 resize-none leading-tight"
                     />
                   </td>
-                  <td className="px-4 py-2 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">
+                  <td className="px-0.5 py-0 whitespace-nowrap text-[10px] text-gray-500 dark:text-gray-300 border-r border-gray-200 dark:border-zinc-700">
                     <Input
                       type="text"
                       value={elemento.unidad}
                       onChange={(e) => actualizarUnidad(elemento.id, e.target.value)}
-                      className="w-20 h-8 text-sm"
+                      className="w-12 h-4 text-[10px] px-0.5 py-0 leading-none"
                     />
                   </td>
-                  <td className="px-4 py-2 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">
+                  <td className="px-0.5 py-0 whitespace-nowrap text-[10px] text-gray-500 dark:text-gray-300 border-r border-gray-200 dark:border-zinc-700">
                     <Input
                       type="number"
                       min="0.01"
                       step="0.01"
                       value={elemento.rendimiento || 1}
                       onChange={(e) => actualizarRendimiento(elemento.id, Number.parseFloat(e.target.value) || 1)}
-                      className="w-20 h-8 text-sm"
+                      className="w-12 h-4 text-[10px] px-0.5 py-0 leading-none"
                     />
                   </td>
-                  <td className="px-4 py-2 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">
+                  <td className="px-0.5 py-0 whitespace-nowrap text-[10px] text-gray-500 dark:text-gray-300 border-r border-gray-200 dark:border-zinc-700">
                     {elemento.total.toFixed(2)}
                   </td>
-                  <td className="px-4 py-2 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">
+                  <td className="px-0.5 py-0 whitespace-nowrap text-[10px] text-gray-500 dark:text-gray-300 border-r border-gray-200 dark:border-zinc-700">
                     <Input
                       type="number"
                       min="0"
                       step="0.01"
                       value={elemento.precio}
                       onChange={(e) => actualizarPrecio(elemento.id, Number.parseFloat(e.target.value) || 0)}
-                      className="w-24 h-8 text-sm"
+                      className="w-12 h-4 text-[10px] px-0.5 py-0 leading-none"
                     />
                   </td>
-                  <td className="px-4 py-2 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">
+                  <td className="px-0.5 py-0 whitespace-nowrap text-[10px] text-gray-500 dark:text-gray-300 border-r border-gray-200 dark:border-zinc-700">
                     Q{elemento.precio * elemento.total}
                   </td>
-                  <td className="px-4 py-2 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">
+                  <td className="px-0.5 py-0 whitespace-nowrap text-[10px] text-gray-500 dark:text-gray-300 border-r border-gray-200 dark:border-zinc-700">
                     Q{elemento.costoUnidad?.toFixed(2) || (elemento.precio * (elemento.rendimiento || 1)).toFixed(2)}
                   </td>
-                  <td className="px-4 py-2 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">
+                  <td className="px-0.5 py-0 whitespace-nowrap text-[10px] text-gray-500 dark:text-gray-300 border-r border-gray-200 dark:border-zinc-700">
                     {elemento.porcentaje?.toFixed(2) || "0.00"}%
                   </td>
-                  <td className="px-4 py-2 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">
+                  <td className="px-0.5 py-0 whitespace-nowrap text-[10px] text-gray-500 dark:text-gray-300 border-r border-gray-200 dark:border-zinc-700">
                     <button onClick={() => eliminarElemento(elemento.id)} className="text-red-500 hover:text-red-700">
-                      <X className="h-4 w-4" />
+                      <X className="h-2.5 w-2.5" />
                     </button>
                   </td>
                 </tr>
               ))}
-              <tr className="bg-gray-50 dark:bg-zinc-700">
-                <td colSpan={10} className="px-4 py-2 text-right text-sm font-medium text-gray-900 dark:text-white">
+              <tr className="bg-gray-50 dark:bg-zinc-700 h-4">
+                <td
+                  colSpan={10}
+                  className="px-0.5 py-0 text-right text-[10px] font-medium text-gray-900 dark:text-white border-r border-gray-200 dark:border-zinc-700"
+                >
                   Subtotal:
                 </td>
-                <td className="px-4 py-2 text-sm font-bold text-gray-900 dark:text-white">
+                <td className="px-0.5 py-0 text-[10px] font-bold text-gray-900 dark:text-white">
                   Q{elementos.reduce((sum, elemento) => sum + elemento.total, 0).toFixed(2)}
                 </td>
               </tr>
@@ -891,8 +959,42 @@ export function NuevaCedula() {
     )
   }
 
+  // Renderizar resultados de búsqueda para cada familia
+  const renderResultadosBusqueda = (tipo: "MT" | "MO" | "EQ", resultados: any[], busqueda: string) => {
+    if (!busqueda) return null
+
+    return (
+      <div className="bg-white dark:bg-zinc-800 border border-gray-200 dark:border-zinc-700 rounded-md max-h-40 overflow-y-auto mb-2">
+        {resultados.length > 0 ? (
+          <ul className="divide-y divide-gray-200 dark:divide-zinc-700">
+            {resultados.map((elemento: any) => (
+              <li
+                key={elemento.id}
+                className="p-1.5 hover:bg-gray-50 dark:hover:bg-zinc-700 cursor-pointer flex justify-between items-center text-[10px]"
+                onClick={() => agregarElemento(tipo, elemento.id)}
+              >
+                <div>
+                  <p className="font-medium">
+                    {elemento.codigo} - {tipo === "MO" ? elemento.trabajo : elemento.nombre}
+                  </p>
+                  <p className="text-[9px] text-gray-500 dark:text-gray-400">
+                    {elemento.unidad} - Q{elemento.precio.toFixed(2)}
+                  </p>
+                </div>
+                <Plus className="h-3 w-3 text-gray-500 dark:text-gray-400" />
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <p className="p-1.5 text-[10px] text-gray-500 dark:text-gray-400">No se encontraron resultados</p>
+        )}
+      </div>
+    )
+  }
+
+  // También actualizar la fila de entrada para que sea más compacta
   return (
-    <div className="space-y-6 relative">
+    <div className="space-y-4 relative">
       <Card>
         <CardHeader className="pb-0">
           <div className="flex-1 mb-4">
@@ -906,83 +1008,97 @@ export function NuevaCedula() {
           </div>
 
           {/* Panel de totales sticky */}
-          <div className="sticky top-0 z-50 bg-white dark:bg-[#0F0F12] border-b border-gray-200 dark:border-zinc-700 pb-4">
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
-              <div className="flex items-center bg-gray-100 dark:bg-zinc-700 p-3 rounded-md">
-                <Package className="h-5 w-5 text-blue-500 mr-2" />
+          <div className="sticky top-0 z-50 bg-white dark:bg-[#0F0F12] border-b border-gray-200 dark:border-zinc-700 pb-2">
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-2">
+              <div className="flex items-center bg-gray-100 dark:bg-zinc-700 p-2 rounded-md">
+                <Package className="h-4 w-4 text-blue-500 mr-2" />
                 <div className="flex flex-col">
-                  <span className="text-xs text-gray-500 dark:text-gray-400">Materiales:</span>
-                  <span className="font-medium text-gray-900 dark:text-white">Q{totalMateriales.toFixed(2)}</span>
+                  <span className="text-[10px] text-gray-500 dark:text-gray-400">Materiales:</span>
+                  <span className="font-medium text-[11px] text-gray-900 dark:text-white">
+                    Q{totalMateriales.toFixed(2)}
+                  </span>
                 </div>
               </div>
-              <div className="flex items-center bg-gray-100 dark:bg-zinc-700 p-3 rounded-md">
-                <HardHat className="h-5 w-5 text-green-500 mr-2" />
+              <div className="flex items-center bg-gray-100 dark:bg-zinc-700 p-2 rounded-md">
+                <HardHat className="h-4 w-4 text-green-500 mr-2" />
                 <div className="flex flex-col">
-                  <span className="text-xs text-gray-500 dark:text-gray-400">Mano de Obra:</span>
-                  <span className="font-medium text-gray-900 dark:text-white">Q{totalManoObra.toFixed(2)}</span>
+                  <span className="text-[10px] text-gray-500 dark:text-gray-400">Mano de Obra:</span>
+                  <span className="font-medium text-[11px] text-gray-900 dark:text-white">
+                    Q{totalManoObra.toFixed(2)}
+                  </span>
                 </div>
               </div>
-              <div className="flex items-center bg-gray-100 dark:bg-zinc-700 p-3 rounded-md">
-                <Truck className="h-5 w-5 text-amber-500 mr-2" />
+              <div className="flex items-center bg-gray-100 dark:bg-zinc-700 p-2 rounded-md">
+                <Truck className="h-4 w-4 text-amber-500 mr-2" />
                 <div className="flex flex-col">
-                  <span className="text-xs text-gray-500 dark:text-gray-400">Equipamiento:</span>
-                  <span className="font-medium text-gray-900 dark:text-white">Q{totalEquipos.toFixed(2)}</span>
+                  <span className="text-[10px] text-gray-500 dark:text-gray-400">Equipamiento:</span>
+                  <span className="font-medium text-[11px] text-gray-900 dark:text-white">
+                    Q{totalEquipos.toFixed(2)}
+                  </span>
                 </div>
               </div>
-              <div className="flex items-center bg-gray-100 dark:bg-zinc-700 p-3 rounded-md">
-                <DollarSign className="h-5 w-5 text-green-500 mr-2" />
+              <div className="flex items-center bg-gray-100 dark:bg-zinc-700 p-2 rounded-md">
+                <DollarSign className="h-4 w-4 text-green-500 mr-2" />
                 <div className="flex flex-col">
-                  <span className="text-xs text-gray-500 dark:text-gray-400">Total de la Cédula:</span>
-                  <span className="font-bold text-gray-900 dark:text-white">Q{totalCedula.toFixed(2)}</span>
+                  <span className="text-[10px] text-gray-500 dark:text-gray-400">Total de la Cédula:</span>
+                  <span className="font-bold text-[11px] text-gray-900 dark:text-white">Q{totalCedula.toFixed(2)}</span>
                 </div>
               </div>
             </div>
 
-            {/* Fila completa con todos los campos como en la imagen */}
-
-            <div className="mt-4 border border-gray-200 dark:border-zinc-700 rounded-md overflow-hidden">
-              <div className="grid grid-cols-12 gap-0 bg-gray-50 dark:bg-zinc-800 text-xs font-medium text-gray-700 dark:text-gray-300 border-b border-gray-200 dark:border-zinc-700">
-                <div className="p-2 border-r border-gray-200 dark:border-zinc-700">Tarea</div>
-                <div className="p-2 border-r border-gray-200 dark:border-zinc-700"></div>
-                <div className="p-2 border-r border-gray-200 dark:border-zinc-700">Unidad</div>
-                <div className="p-2 border-r border-gray-200 dark:border-zinc-700">Cant</div>
-                <div className="p-2 border-r border-gray-200 dark:border-zinc-700"></div>
-                <div className="p-2 border-r border-gray-200 dark:border-zinc-700">%IMP</div>
-                <div className="p-2 border-r border-gray-200 dark:border-zinc-700">Q.IMP</div>
-                <div className="p-2 border-r border-gray-200 dark:border-zinc-700">%FACT IND</div>
-                <div className="p-2 border-r border-gray-200 dark:border-zinc-700">Q.IND.UTILD</div>
-                <div className="p-2 border-r border-gray-200 dark:border-zinc-700">TOTAL</div>
-                <div className="p-2 border-r border-gray-200 dark:border-zinc-700">P/U</div>
-                <div className="p-2">%INCIDENCIA</div>
+            {/* Fila completa con todos los campos como en la imagen - más compacta */}
+            <div className="mt-2 border border-gray-200 dark:border-zinc-700 rounded-md overflow-hidden">
+              <div className="grid grid-cols-12 gap-0 bg-gray-50 dark:bg-zinc-800 text-[9px] font-medium text-gray-700 dark:text-gray-300 border-b border-gray-200 dark:border-zinc-700 h-4">
+                <div className="px-0.5 py-0 border-r border-gray-200 dark:border-zinc-700 flex items-center">Tarea</div>
+                <div className="px-0.5 py-0 border-r border-gray-200 dark:border-zinc-700 flex items-center"></div>
+                <div className="px-0.5 py-0 border-r border-gray-200 dark:border-zinc-700 flex items-center">
+                  Unidad
+                </div>
+                <div className="px-0.5 py-0 border-r border-gray-200 dark:border-zinc-700 flex items-center">Cant</div>
+                <div className="px-0.5 py-0 border-r border-gray-200 dark:border-zinc-700 flex items-center"></div>
+                <div className="px-0.5 py-0 border-r border-gray-200 dark:border-zinc-700 flex items-center">%IMP</div>
+                <div className="px-0.5 py-0 border-r border-gray-200 dark:border-zinc-700 flex items-center">Q.IMP</div>
+                <div className="px-0.5 py-0 border-r border-gray-200 dark:border-zinc-700 flex items-center">
+                  %FACT IND
+                </div>
+                <div className="px-0.5 py-0 border-r border-gray-200 dark:border-zinc-700 flex items-center">
+                  Q.IND.UTILD
+                </div>
+                <div className="px-0.5 py-0 border-r border-gray-200 dark:border-zinc-700 flex items-center">TOTAL</div>
+                <div className="px-0.5 py-0 border-r border-gray-200 dark:border-zinc-700 flex items-center">P/U</div>
+                <div className="px-0.5 py-0 flex items-center">%INCIDENCIA</div>
               </div>
-              <div className="grid grid-cols-12 gap-0 bg-white dark:bg-zinc-900">
-                <div className="p-1 border-r border-gray-200 dark:border-zinc-700">
+              <div className="grid grid-cols-12 gap-0 bg-white dark:bg-zinc-900 h-5">
+                <div className="p-0 border-r border-gray-200 dark:border-zinc-700">
                   <Input
-                    className="h-8 text-xs"
+                    className="h-5 text-[10px] px-0.5 py-0 leading-none"
                     placeholder="Ingrese tarea"
                     value={filaTarea}
                     onChange={(e) => setFilaTarea(e.target.value)}
+                    disabled={false}
                   />
                 </div>
-                <div className="p-1 border-r border-gray-200 dark:border-zinc-700">
+                <div className="p-0 border-r border-gray-200 dark:border-zinc-700">
                   <Input
-                    className="h-8 text-xs"
+                    className="h-5 text-[10px] px-0.5 py-0 leading-none"
                     placeholder=""
                     value={filaDescripcion}
                     onChange={(e) => setFilaDescripcion(e.target.value)}
+                    disabled={false}
                   />
                 </div>
-                <div className="p-1 border-r border-gray-200 dark:border-zinc-700">
+                <div className="p-0 border-r border-gray-200 dark:border-zinc-700">
                   <Input
-                    className="h-8 text-xs"
+                    className="h-5 text-[10px] px-0.5 py-0 leading-none"
                     placeholder="Unidad"
                     value={filaUnidad}
                     onChange={(e) => setFilaUnidad(e.target.value)}
+                    disabled={false}
                   />
                 </div>
-                <div className="p-1 border-r border-gray-200 dark:border-zinc-700">
+                <div className="p-0 border-r border-gray-200 dark:border-zinc-700">
                   <Input
-                    className="h-8 text-xs"
+                    className="h-5 text-[10px] px-0.5 py-0 leading-none"
                     type="number"
                     placeholder="0"
                     value={filaCantidad || ""}
@@ -990,20 +1106,22 @@ export function NuevaCedula() {
                       const newCant = Number(e.target.value) || 0
                       setFilaCantidad(newCant)
                     }}
+                    disabled={false}
                   />
                 </div>
-                <div className="p-1 border-r border-gray-200 dark:border-zinc-700">
+                <div className="p-0 border-r border-gray-200 dark:border-zinc-700">
                   <Input
-                    className="h-8 text-xs"
+                    className="h-5 text-[10px] px-0.5 py-0 leading-none"
                     type="number"
                     placeholder=""
                     value={filaPrecioUnitario || ""}
                     onChange={(e) => setFilaPrecioUnitario(Number(e.target.value) || 0)}
+                    disabled={false}
                   />
                 </div>
-                <div className="p-1 border-r border-gray-200 dark:border-zinc-700">
+                <div className="p-0 border-r border-gray-200 dark:border-zinc-700">
                   <Input
-                    className="h-8 text-xs"
+                    className="h-5 text-[10px] px-0.5 py-0 leading-none"
                     type="text"
                     placeholder="0%"
                     value={`${filaPorcentajeImp || 0}%`}
@@ -1011,21 +1129,23 @@ export function NuevaCedula() {
                       const value = e.target.value.replace("%", "")
                       setFilaPorcentajeImp(Number(value) || 0)
                     }}
+                    disabled={false}
                   />
                 </div>
-                <div className="p-1 border-r border-gray-200 dark:border-zinc-700">
+                <div className="p-0 border-r border-gray-200 dark:border-zinc-700">
                   <Input
-                    className="h-8 text-xs"
+                    className="h-5 text-[10px] px-0.5 py-0 leading-none"
                     type="number"
                     placeholder="0.00"
                     value={filaQImp || ""}
                     onChange={(e) => setFilaQImp(Number(e.target.value) || 0)}
                     readOnly
+                    disabled={false}
                   />
                 </div>
-                <div className="p-1 border-r border-gray-200 dark:border-zinc-700">
+                <div className="p-0 border-r border-gray-200 dark:border-zinc-700">
                   <Input
-                    className="h-8 text-xs"
+                    className="h-5 text-[10px] px-0.5 py-0 leading-none"
                     type="text"
                     placeholder="0%"
                     value={`${filaPorcentajeFactInd || 0}%`}
@@ -1033,41 +1153,45 @@ export function NuevaCedula() {
                       const value = e.target.value.replace("%", "")
                       setFilaPorcentajeFactInd(Number(value) || 0)
                     }}
+                    disabled={false}
                   />
                 </div>
-                <div className="p-1 border-r border-gray-200 dark:border-zinc-700">
+                <div className="p-0 border-r border-gray-200 dark:border-zinc-700">
                   <Input
-                    className="h-8 text-xs"
+                    className="h-5 text-[10px] px-0.5 py-0 leading-none"
                     type="number"
                     placeholder="0.00"
                     value={filaQIndUtild || ""}
                     onChange={(e) => setFilaQIndUtild(Number(e.target.value) || 0)}
                     readOnly
+                    disabled={false}
                   />
                 </div>
-                <div className="p-1 border-r border-gray-200 dark:border-zinc-700">
+                <div className="p-0 border-r border-gray-200 dark:border-zinc-700">
                   <Input
-                    className="h-8 text-xs"
+                    className="h-5 text-[10px] px-0.5 py-0 leading-none"
                     type="number"
                     placeholder="0.00"
                     value={filaTotal || ""}
                     onChange={(e) => setFilaTotal(Number(e.target.value) || 0)}
                     readOnly
+                    disabled={false}
                   />
                 </div>
-                <div className="p-1 border-r border-gray-200 dark:border-zinc-700">
+                <div className="p-0 border-r border-gray-200 dark:border-zinc-700">
                   <Input
-                    className="h-8 text-xs"
+                    className="h-5 text-[10px] px-0.5 py-0 leading-none"
                     type="number"
                     placeholder="0.00"
                     value={filaPU || ""}
                     onChange={(e) => setFilaPU(Number(e.target.value) || 0)}
                     readOnly
+                    disabled={false}
                   />
                 </div>
-                <div className="p-1">
+                <div className="p-0">
                   <Input
-                    className="h-8 text-xs"
+                    className="h-5 text-[10px] px-0.5 py-0 leading-none"
                     type="text"
                     placeholder="0%"
                     value={`${filaPorcentajeIncidencia || 0}%`}
@@ -1076,6 +1200,7 @@ export function NuevaCedula() {
                       setFilaPorcentajeIncidencia(Number(value) || 0)
                     }}
                     readOnly
+                    disabled={false}
                   />
                 </div>
               </div>
@@ -1083,7 +1208,7 @@ export function NuevaCedula() {
           </div>
         </CardHeader>
         <CardContent>
-          <div className="space-y-6">
+          <div className="space-y-4">
             <Tabs defaultValue="elementos" className="w-full">
               <TabsList className="grid grid-cols-3 mb-4">
                 <TabsTrigger value="elementos">Elementos</TabsTrigger>
@@ -1092,111 +1217,101 @@ export function NuevaCedula() {
               </TabsList>
 
               <TabsContent value="elementos" className="space-y-4">
-                {/* Botones de familia */}
-                <div className="flex space-x-2">
-                  <Button
-                    variant={familiaActiva === "MT" ? "default" : "outline"}
-                    onClick={() => setFamiliaActiva("MT")}
-                    className="flex items-center"
-                  >
-                    <Package className="mr-2 h-4 w-4" />
-                    Materiales (MT)
-                  </Button>
-                  <Button
-                    variant={familiaActiva === "MO" ? "default" : "outline"}
-                    onClick={() => setFamiliaActiva("MO")}
-                    className="flex items-center"
-                  >
-                    <HardHat className="mr-2 h-4 w-4" />
-                    Mano de Obra (MO)
-                  </Button>
-                  <Button
-                    variant={familiaActiva === "EQ" ? "default" : "outline"}
-                    onClick={() => setFamiliaActiva("EQ")}
-                    className="flex items-center"
-                  >
-                    <Truck className="mr-2 h-4 w-4" />
-                    Equipamiento (EQ)
-                  </Button>
+                {/* Sección de Materiales */}
+                <div className="border border-gray-200 dark:border-zinc-700 rounded-md p-2">
+                  <div className="flex items-center mb-2">
+                    <Package className="h-4 w-4 text-blue-500 mr-2" />
+                    <h3 className="text-sm font-medium">Materiales (MT)</h3>
+                  </div>
+
+                  <div className="relative mb-2">
+                    <Search className="absolute left-2 top-1.5 h-3 w-3 text-gray-500 dark:text-gray-400" />
+                    <Input
+                      type="text"
+                      placeholder="Buscar materiales..."
+                      className="pl-7 h-6 text-[10px]"
+                      value={busquedaMT}
+                      onChange={(e) => setBusquedaMT(e.target.value)}
+                    />
+                  </div>
+
+                  {renderResultadosBusqueda("MT", materialesFiltrados, busquedaMT)}
+
+                  {materialesSeleccionados.length > 0 ? (
+                    renderTablaElementos(
+                      materialesSeleccionados,
+                      "Materiales (MT)",
+                      <Package className="h-4 w-4 text-blue-500" />,
+                    )
+                  ) : (
+                    <p className="text-[10px] text-gray-500 dark:text-gray-400 mb-2">
+                      No hay materiales en la cédula. Busca y agrega materiales.
+                    </p>
+                  )}
                 </div>
 
-                {/* Búsqueda */}
-                {familiaActiva && (
-                  <div className="space-y-4">
-                    <div className="flex items-center space-x-2">
-                      <div className="relative flex-1">
-                        <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-gray-500 dark:text-gray-400" />
-                        <Input
-                          type="text"
-                          placeholder="Buscar por código o nombre..."
-                          className="pl-9"
-                          value={busqueda}
-                          onChange={(e) => setBusqueda(e.target.value)}
-                        />
-                      </div>
-                    </div>
-
-                    {/* Resultados de búsqueda */}
-                    {busqueda && (
-                      <div className="bg-white dark:bg-zinc-800 border border-gray-200 dark:border-zinc-700 rounded-md max-h-60 overflow-y-auto">
-                        {elementosFiltrados.length > 0 ? (
-                          <ul className="divide-y divide-gray-200 dark:divide-zinc-700">
-                            {elementosFiltrados.map((elemento: any) => (
-                              <li
-                                key={elemento.id}
-                                className="p-3 hover:bg-gray-50 dark:hover:bg-zinc-700 cursor-pointer flex justify-between items-center"
-                                onClick={() => agregarElemento(familiaActiva, elemento.id)}
-                              >
-                                <div>
-                                  <p className="font-medium text-sm">
-                                    {elemento.codigo} - {familiaActiva === "MO" ? elemento.trabajo : elemento.nombre}
-                                  </p>
-                                  <p className="text-xs text-gray-500 dark:text-gray-400">
-                                    {elemento.unidad} - Q{elemento.precio.toFixed(2)}
-                                  </p>
-                                </div>
-                                <Plus className="h-4 w-4 text-gray-500 dark:text-gray-400" />
-                              </li>
-                            ))}
-                          </ul>
-                        ) : (
-                          <p className="p-3 text-sm text-gray-500 dark:text-gray-400">No se encontraron resultados</p>
-                        )}
-                      </div>
-                    )}
+                {/* Sección de Mano de Obra */}
+                <div className="border border-gray-200 dark:border-zinc-700 rounded-md p-2">
+                  <div className="flex items-center mb-2">
+                    <HardHat className="h-4 w-4 text-green-500 mr-2" />
+                    <h3 className="text-sm font-medium">Mano de Obra (MO)</h3>
                   </div>
-                )}
 
-                {/* Elementos seleccionados por familia */}
-                <div className="mt-6">
-                  <h3 className="text-lg font-medium mb-3">Elementos de la Cédula</h3>
+                  <div className="relative mb-2">
+                    <Search className="absolute left-2 top-1.5 h-3 w-3 text-gray-500 dark:text-gray-400" />
+                    <Input
+                      type="text"
+                      placeholder="Buscar mano de obra..."
+                      className="pl-7 h-6 text-[10px]"
+                      value={busquedaMO}
+                      onChange={(e) => setBusquedaMO(e.target.value)}
+                    />
+                  </div>
 
-                  {elementosSeleccionados.length > 0 ? (
-                    <div>
-                      {/* Materiales */}
-                      {renderTablaElementos(
-                        materialesSeleccionados,
-                        "Materiales (MT)",
-                        <Package className="h-5 w-5 text-blue-500" />,
-                      )}
+                  {renderResultadosBusqueda("MO", manoObraFiltrada, busquedaMO)}
 
-                      {/* Mano de Obra */}
-                      {renderTablaElementos(
-                        manoObraSeleccionada,
-                        "Mano de Obra (MO)",
-                        <HardHat className="h-5 w-5 text-green-500" />,
-                      )}
-
-                      {/* Equipamiento */}
-                      {renderTablaElementos(
-                        equiposSeleccionados,
-                        "Equipamiento (EQ)",
-                        <Truck className="h-5 w-5 text-amber-500" />,
-                      )}
-                    </div>
+                  {manoObraSeleccionada.length > 0 ? (
+                    renderTablaElementos(
+                      manoObraSeleccionada,
+                      "Mano de Obra (MO)",
+                      <HardHat className="h-4 w-4 text-green-500" />,
+                    )
                   ) : (
-                    <p className="text-sm text-gray-500 dark:text-gray-400">
-                      No hay elementos en la cédula. Selecciona una familia y busca elementos para agregarlos.
+                    <p className="text-[10px] text-gray-500 dark:text-gray-400 mb-2">
+                      No hay mano de obra en la cédula. Busca y agrega mano de obra.
+                    </p>
+                  )}
+                </div>
+
+                {/* Sección de Equipamiento */}
+                <div className="border border-gray-200 dark:border-zinc-700 rounded-md p-2">
+                  <div className="flex items-center mb-2">
+                    <Truck className="h-4 w-4 text-amber-500 mr-2" />
+                    <h3 className="text-sm font-medium">Equipamiento (EQ)</h3>
+                  </div>
+
+                  <div className="relative mb-2">
+                    <Search className="absolute left-2 top-1.5 h-3 w-3 text-gray-500 dark:text-gray-400" />
+                    <Input
+                      type="text"
+                      placeholder="Buscar equipamiento..."
+                      className="pl-7 h-6 text-[10px]"
+                      value={busquedaEQ}
+                      onChange={(e) => setBusquedaEQ(e.target.value)}
+                    />
+                  </div>
+
+                  {renderResultadosBusqueda("EQ", equiposFiltrados, busquedaEQ)}
+
+                  {equiposSeleccionados.length > 0 ? (
+                    renderTablaElementos(
+                      equiposSeleccionados,
+                      "Equipamiento (EQ)",
+                      <Truck className="h-4 w-4 text-amber-500" />,
+                    )
+                  ) : (
+                    <p className="text-[10px] text-gray-500 dark:text-gray-400 mb-2">
+                      No hay equipamiento en la cédula. Busca y agrega equipamiento.
                     </p>
                   )}
                 </div>
@@ -1300,7 +1415,7 @@ export function NuevaCedula() {
 
                 <div className="mt-4 p-4 bg-gray-50 dark:bg-zinc-800 rounded-lg">
                   <h4 className="text-md font-medium mb-3 flex items-center">
-                    <Calculator className="h-5 w-5 mr-2 text-gray-500" />
+                    <Calculator className="h-4 w-4 mr-2 text-gray-500" />
                     Resumen de Cálculos
                   </h4>
                   <div className="space-y-2">
@@ -1338,32 +1453,41 @@ export function NuevaCedula() {
             </Tabs>
 
             {/* Botones de acción */}
-            <div className="flex justify-between mt-6">
+            <div className="flex justify-between mt-4">
               <div className="space-x-2">
-                <Button variant="outline" onClick={exportarPDF} className="flex items-center">
-                  <Download className="mr-2 h-4 w-4" />
+                <Button variant="outline" onClick={exportarPDF} className="flex items-center h-8 text-[11px]">
+                  <Download className="mr-1 h-3 w-3" />
                   Exportar PDF
                 </Button>
-                <Button variant="outline" onClick={imprimirCedula} className="flex items-center">
-                  <Printer className="mr-2 h-4 w-4" />
+                <Button variant="outline" onClick={imprimirCedula} className="flex items-center h-8 text-[11px]">
+                  <Printer className="mr-1 h-3 w-3" />
                   Imprimir
                 </Button>
               </div>
               <div className="space-x-2">
-                <Button variant="outline">Cancelar</Button>
+                <Button
+                  variant="outline"
+                  className="h-8 text-[11px]"
+                  onClick={() => {
+                    // Reiniciar el estado de guardado para permitir editar y guardar nuevamente
+                    setCedulaGuardada(false)
+                  }}
+                >
+                  {cedulaGuardada ? "Editar" : "Cancelar"}
+                </Button>
                 <Button
                   onClick={guardarCedula}
-                  disabled={elementosSeleccionados.length === 0 || cedulaGuardada}
-                  className="flex items-center"
+                  disabled={elementosSeleccionados.length === 0}
+                  className="flex items-center h-8 text-[11px]"
                 >
                   {cedulaGuardada ? (
                     <>
-                      <CheckCircle className="mr-2 h-4 w-4" />
+                      <CheckCircle className="mr-1 h-3 w-3" />
                       Guardada
                     </>
                   ) : (
                     <>
-                      <Save className="mr-2 h-4 w-4" />
+                      <Save className="mr-1 h-3 w-3" />
                       Guardar Cédula
                     </>
                   )}
