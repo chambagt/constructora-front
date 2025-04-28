@@ -213,12 +213,10 @@ const proyectosEjemplo = [
 ]
 
 interface NuevaCedulaProps {
-  rfId?: string | null
   proyectoId?: string | null
-  tipo?: string | null
 }
 
-export function NuevaCedula({ rfId, proyectoId, tipo }: NuevaCedulaProps) {
+export function NuevaCedula({ proyectoId }: NuevaCedulaProps) {
   const { toast } = useToast()
   const router = useRouter()
   const [nombreCedula, setNombreCedula] = useState("Nueva Cédula")
@@ -349,37 +347,13 @@ export function NuevaCedula({ rfId, proyectoId, tipo }: NuevaCedulaProps) {
         cedulasGuardadas.push(cedula)
         localStorage.setItem("cedulas", JSON.stringify(cedulasGuardadas))
 
-        // Si hay un rfId, asociar la cédula al RF y redirigir
-        if (rfId && proyectoId && tipo) {
-          // Obtener los resúmenes financieros
-          const resumenesGuardados = JSON.parse(localStorage.getItem("resumenesFinancieros") || "[]")
-          const resumenEncontrado = resumenesGuardados.find(
-            (r: any) => r.id === rfId && r.proyectoId === proyectoId && r.tipo === tipo,
-          )
-
-          if (resumenEncontrado) {
-            // Actualizar el RF con la nueva cédula asociada
-            const rfActualizado = {
-              ...resumenEncontrado,
-              cedulasAsociadas: [...resumenEncontrado.cedulasAsociadas, cedulaId],
-            }
-
-            // Guardar en localStorage
-            const resumenesActualizados = resumenesGuardados.map((r: any) => (r.id === rfId ? rfActualizado : r))
-            localStorage.setItem("resumenesFinancieros", JSON.stringify(resumenesActualizados))
-
-            // Redirigir a la página del RF
-            setTimeout(() => {
-              window.location.href = `/proyectos/${proyectoId}/${tipo}`
-            }, 500)
-          } else {
-            // Si no se encuentra el RF, redirigir a la página de detalle de la cédula
-            setTimeout(() => {
-              router.push(`/cedulas/${cedulaId}`)
-            }, 500)
-          }
+        // Si hay un proyectoId, redirigir a la página del proyecto
+        if (proyecto) {
+          setTimeout(() => {
+            router.push(`/proyectos/${proyecto}`)
+          }, 500)
         } else {
-          // Si no hay rfId, redirigir a la página de detalle de la cédula
+          // Si no hay proyectoId, redirigir a la página de detalle de la cédula
           setTimeout(() => {
             router.push(`/cedulas/${cedulaId}`)
           }, 500)
@@ -886,6 +860,9 @@ export function NuevaCedula({ rfId, proyectoId, tipo }: NuevaCedulaProps) {
                 >
                   <td className="px-0.5 py-0 whitespace-nowrap text-[10px] font-medium text-gray-900 dark:text-white border-r border-gray-200 dark:border-zinc-700">
                     {elemento.codigo}
+                  </td>
+                  <td className="px-0.5 py-0 whitespace-nowrap text-[10px] text-gray-500 dark:text-gray-300 border-r border-gray-200 dark:border-zinc-700">
+                    {elemento.familia}
                   </td>
                   <td className="px-0.5 py-0 whitespace-nowrap text-[10px] text-gray-500 dark:text-gray-300 border-r border-gray-200 dark:border-zinc-700">
                     <Textarea

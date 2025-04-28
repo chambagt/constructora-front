@@ -4,7 +4,7 @@ import { useState, useEffect } from "react"
 import { useParams, useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { ArrowLeft, DollarSign, PlusCircle, Eye, X, Search } from "lucide-react"
+import { ArrowLeft, DollarSign, PlusCircle, Eye, X, Search, Trash2 } from "lucide-react"
 import type { Proyecto } from "@/components/kokonutui/nuevo-proyecto-form"
 import { Input } from "@/components/ui/input"
 import { useToast } from "@/hooks/use-toast"
@@ -227,6 +227,31 @@ export default function ProyectoVentaPage() {
     router.push(`/cedulas/nueva?rfId=${resumenFinanciero.id}&proyectoId=${proyectoId}&tipo=venta`)
   }
 
+  // Eliminar RF
+  const eliminarRF = () => {
+    if (!resumenFinanciero) return
+
+    // Confirmar eliminación
+    if (
+      window.confirm("¿Estás seguro de que deseas eliminar este Resumen Financiero? Esta acción no se puede deshacer.")
+    ) {
+      // Eliminar RF del localStorage
+      if (typeof window !== "undefined") {
+        const resumenesGuardados = JSON.parse(localStorage.getItem("resumenesFinancieros") || "[]")
+        const resumenesActualizados = resumenesGuardados.filter((r: ResumenFinanciero) => r.id !== resumenFinanciero.id)
+        localStorage.setItem("resumenesFinancieros", JSON.stringify(resumenesActualizados))
+      }
+
+      toast({
+        title: "RF eliminado",
+        description: "El Resumen Financiero ha sido eliminado con éxito.",
+      })
+
+      // Redirigir al detalle del proyecto
+      router.push(`/proyectos/${proyectoId}`)
+    }
+  }
+
   return (
     <div className="container mx-auto py-10">
       <div className="flex items-center mb-6">
@@ -234,10 +259,14 @@ export default function ProyectoVentaPage() {
           <ArrowLeft className="h-4 w-4 mr-2" />
           Volver al Proyecto
         </Button>
-        <div>
+        <div className="flex-1">
           <h1 className="text-2xl font-bold">Resumen Financiero (RF) - Venta</h1>
           <p className="text-gray-500 dark:text-gray-400">{proyecto?.nombre || "Cargando..."}</p>
         </div>
+        <Button variant="destructive" onClick={eliminarRF}>
+          <Trash2 className="h-4 w-4 mr-2" />
+          Eliminar RF
+        </Button>
       </div>
 
       {/* Resumen Financiero - Simplificado */}

@@ -11,9 +11,7 @@ export default function NuevaCedulaPage() {
   const searchParams = useSearchParams()
 
   // Extraer parámetros de la URL
-  const rfId = searchParams.get("rfId")
   const proyectoId = searchParams.get("proyectoId")
-  const tipo = searchParams.get("tipo")
 
   // Estado para controlar si se ha cargado la página
   const [isLoaded, setIsLoaded] = useState(false)
@@ -24,8 +22,8 @@ export default function NuevaCedulaPage() {
 
   // Función para volver a la página anterior
   const handleBack = () => {
-    if (tipo && proyectoId) {
-      router.push(`/proyectos/${proyectoId}/${tipo}`)
+    if (proyectoId) {
+      router.push(`/proyectos/${proyectoId}`)
     } else {
       router.push("/cedulas")
     }
@@ -45,7 +43,7 @@ export default function NuevaCedulaPage() {
         <h1 className="text-2xl font-bold">Nueva Cédula</h1>
       </div>
 
-      <NuevaCedula rfId={rfId} proyectoId={proyectoId} tipo={tipo} />
+      <NuevaCedula proyectoId={proyectoId} />
     </div>
   )
 }
