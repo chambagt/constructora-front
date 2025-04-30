@@ -2,24 +2,10 @@
 
 import { useState, useEffect } from "react"
 import { useParams, useRouter } from "next/navigation"
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { ArrowLeft, PlusCircle, Calculator, DollarSign, Eye, Trash2 } from "lucide-react"
+import { ArrowLeft, Eye, Trash2 } from "lucide-react"
 import type { Proyecto } from "@/components/kokonutui/nuevo-proyecto-form"
 import { useToast } from "@/hooks/use-toast"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog"
-import { Label } from "@/components/ui/label"
-import { Input } from "@/components/ui/input"
-import { Textarea } from "@/components/ui/textarea"
 
 // Tipo para el Resumen Financiero
 type ResumenFinanciero = {
@@ -45,19 +31,8 @@ export default function ResumenesFinancierosPage() {
   const { toast } = useToast()
 
   const [proyecto, setProyecto] = useState<Proyecto | null>(null)
-  const [resumenesPresupuesto, setResumenesPresupuesto] = useState<ResumenFinanciero[]>([])
-  const [resumenesVenta, setResumenesVenta] = useState<ResumenFinanciero[]>([])
-
-  // Estados para el formulario de nuevo RF
-  const [dialogOpen, setDialogOpen] = useState(false)
-  const [nuevoRFTipo, setNuevoRFTipo] = useState<"presupuesto" | "venta">("presupuesto")
-  const [nuevoRFNombre, setNuevoRFNombre] = useState("")
-  const [nuevoRFDescripcion, setNuevoRFDescripcion] = useState("")
-  const [nuevoRFCostoDirecto, setNuevoRFCostoDirecto] = useState("0")
-  const [nuevoRFCostoIndirecto, setNuevoRFCostoIndirecto] = useState("0")
-  const [nuevoRFUtilidad, setNuevoRFUtilidad] = useState("0")
-  const [nuevoRFImpuestos, setNuevoRFImpuestos] = useState("0")
-  const [nuevoRFNotas, setNuevoRFNotas] = useState("")
+  const [resumenesFinancieros, setResumenesFinancieros] = useState<ResumenFinanciero[]>([])
+  const [tipoActivo, setTipoActivo] = useState<"presupuesto" | "venta">("presupuesto")
 
   // Cargar proyecto y resúmenes financieros
   useEffect(() => {
@@ -69,52 +44,27 @@ export default function ResumenesFinancierosPage() {
 
       // Cargar resúmenes financieros
       const resumenesGuardados = JSON.parse(localStorage.getItem("resumenesFinancieros") || "[]")
-
-      // Filtrar por proyecto y tipo
-      const rfPresupuesto = resumenesGuardados.filter(
-        (rf: ResumenFinanciero) => rf.proyectoId === proyectoId && rf.tipo === "presupuesto",
-      )
-      setResumenesPresupuesto(rfPresupuesto)
-
-      const rfVenta = resumenesGuardados.filter(
-        (rf: ResumenFinanciero) => rf.proyectoId === proyectoId && rf.tipo === "venta",
-      )
-      setResumenesVenta(rfVenta)
+      const resumenesFiltrados = resumenesGuardados.filter((r: ResumenFinanciero) => r.proyectoId === proyectoId)
+      setResumenesFinancieros(resumenesFiltrados)
     }
   }, [proyectoId])
 
-  // Calcular total para el nuevo RF
-  const calcularTotal = () => {
-    const cd = Number.parseFloat(nuevoRFCostoDirecto) || 0
-    const ci = Number.parseFloat(nuevoRFCostoIndirecto) || 0
-    const ut = Number.parseFloat(nuevoRFUtilidad) || 0
-    const imp = Number.parseFloat(nuevoRFImpuestos) || 0
-    return cd + ci + ut + imp
-  }
-
-  // Crear nuevo resumen financiero
-  const crearNuevoRF = () => {
-    if (!nuevoRFNombre) {
-      toast({
-        title: "Error",
-        description: "El nombre del resumen financiero es obligatorio.",
-        variant: "destructive",
-      })
-      return
-    }
+  // Crear nuevo RF
+  const crearNuevoRF = (tipo: "presupuesto" | "venta") => {
+    if (!proyecto) return
 
     const nuevoRF: ResumenFinanciero = {
       id: `rf-${Date.now()}`,
       proyectoId,
-      tipo: nuevoRFTipo,
-      nombre: nuevoRFNombre,
-      descripcion: nuevoRFDescripcion,
-      costoDirecto: Number.parseFloat(nuevoRFCostoDirecto) || 0,
-      costoIndirecto: Number.parseFloat(nuevoRFCostoIndirecto) || 0,
-      utilidad: Number.parseFloat(nuevoRFUtilidad) || 0,
-      impuestos: Number.parseFloat(nuevoRFImpuestos) || 0,
-      total: calcularTotal(),
-      notas: nuevoRFNotas,
+      tipo,
+      nombre: `${tipo === "presupuesto" ? "Presupuesto" : "Venta"} - ${proyecto.nombre}`,
+      descripcion: "",
+      costoDirecto: 0,
+      costoIndirecto: 0,
+      utilidad: 0,
+      impuestos: 0,
+      total: 0,
+      notas: "",
       fecha: new Date().toISOString(),
       cedulasAsociadas: [],
     }
@@ -126,414 +76,168 @@ export default function ResumenesFinancierosPage() {
     }
 
     // Actualizar estado
-    if (nuevoRFTipo === "presupuesto") {
-      setResumenesPresupuesto([...resumenesPresupuesto, nuevoRF])
-    } else {
-      setResumenesVenta([...resumenesVenta, nuevoRF])
-    }
+    setResumenesFinancieros([...resumenesFinancieros, nuevoRF])
 
-    // Cerrar diálogo y limpiar formulario
-    setDialogOpen(false)
-    limpiarFormulario()
+    // Redirigir a la página de detalle del RF
+    router.push(`/proyectos/${proyectoId}/resumenes-financieros/${nuevoRF.id}`)
 
     toast({
       title: "Resumen financiero creado",
-      description: `El resumen financiero "${nuevoRFNombre}" ha sido creado con éxito.`,
+      description: `Se ha creado un nuevo resumen financiero de ${tipo}.`,
     })
-
-    // Redirigir al detalle del nuevo RF
-    router.push(`/proyectos/${proyectoId}/resumenes-financieros/${nuevoRF.id}`)
   }
 
-  // Limpiar formulario
-  const limpiarFormulario = () => {
-    setNuevoRFNombre("")
-    setNuevoRFDescripcion("")
-    setNuevoRFCostoDirecto("0")
-    setNuevoRFCostoIndirecto("0")
-    setNuevoRFUtilidad("0")
-    setNuevoRFImpuestos("0")
-    setNuevoRFNotas("")
-  }
-
-  // Eliminar resumen financiero
-  const eliminarRF = (rf: ResumenFinanciero) => {
-    if (window.confirm(`¿Estás seguro de que deseas eliminar el resumen financiero "${rf.nombre}"?`)) {
-      // Eliminar del localStorage
-      if (typeof window !== "undefined") {
-        const resumenesGuardados = JSON.parse(localStorage.getItem("resumenesFinancieros") || "[]")
-        const resumenesActualizados = resumenesGuardados.filter((r: ResumenFinanciero) => r.id !== rf.id)
-        localStorage.setItem("resumenesFinancieros", JSON.stringify(resumenesActualizados))
-      }
-
-      // Actualizar estado
-      if (rf.tipo === "presupuesto") {
-        setResumenesPresupuesto(resumenesPresupuesto.filter((r) => r.id !== rf.id))
-      } else {
-        setResumenesVenta(resumenesVenta.filter((r) => r.id !== rf.id))
-      }
-
-      toast({
-        title: "Resumen financiero eliminado",
-        description: `El resumen financiero "${rf.nombre}" ha sido eliminado con éxito.`,
-      })
-    }
-  }
-
-  // Ver detalle de un RF
+  // Ver detalle de RF
   const verDetalleRF = (rfId: string) => {
     router.push(`/proyectos/${proyectoId}/resumenes-financieros/${rfId}`)
   }
 
-  // Abrir diálogo para crear nuevo RF
-  const abrirDialogoNuevoRF = (tipo: "presupuesto" | "venta") => {
-    setNuevoRFTipo(tipo)
-    setDialogOpen(true)
+  // Eliminar RF
+  const eliminarRF = (rfId: string) => {
+    // Eliminar de localStorage
+    if (typeof window !== "undefined") {
+      const resumenesGuardados = JSON.parse(localStorage.getItem("resumenesFinancieros") || "[]")
+      const resumenesActualizados = resumenesGuardados.filter((r: ResumenFinanciero) => r.id !== rfId)
+      localStorage.setItem("resumenesFinancieros", JSON.stringify(resumenesActualizados))
+    }
+
+    // Actualizar estado
+    setResumenesFinancieros(resumenesFinancieros.filter((r) => r.id !== rfId))
+
+    toast({
+      title: "Resumen financiero eliminado",
+      description: "El resumen financiero ha sido eliminado con éxito.",
+    })
+  }
+
+  // Formatear número como moneda
+  const formatCurrency = (value: number) => {
+    return new Intl.NumberFormat("es-MX", {
+      style: "decimal",
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    }).format(value)
+  }
+
+  // Formatear fecha
+  const formatDate = (dateString: string) => {
+    const date = new Date(dateString)
+    return `${date.getDate()}/${date.getMonth() + 1}/${date.getFullYear()}`
+  }
+
+  if (!proyecto) {
+    return <div className="container mx-auto py-10">Cargando...</div>
   }
 
   return (
-    <div className="container mx-auto py-10">
-      <div className="flex items-center mb-6">
-        <Button variant="outline" onClick={() => router.push(`/proyectos/${proyectoId}`)} className="mr-4">
-          <ArrowLeft className="h-4 w-4 mr-2" />
-          Volver al Proyecto
-        </Button>
-        <div>
-          <h1 className="text-2xl font-bold">Resúmenes Financieros</h1>
-          <p className="text-gray-500 dark:text-gray-400">{proyecto?.nombre || "Cargando..."}</p>
+    <div className="w-full min-h-screen bg-black text-white">
+      {/* Encabezado */}
+      <div className="flex items-center justify-between p-4 border-b border-zinc-800">
+        <div className="flex items-center">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => router.push(`/proyectos/${proyectoId}`)}
+            className="mr-4 text-zinc-400 hover:text-white"
+          >
+            <ArrowLeft className="h-4 w-4 mr-2" />
+            Volver al Proyecto
+          </Button>
+          <div>
+            <h1 className="text-xl font-bold">Resúmenes Financieros</h1>
+            <p className="text-sm text-zinc-400">{proyecto.nombre}</p>
+          </div>
         </div>
       </div>
 
-      <Tabs defaultValue="presupuesto" className="w-full">
-        <TabsList className="grid grid-cols-2 mb-4">
-          <TabsTrigger value="presupuesto">Presupuesto</TabsTrigger>
-          <TabsTrigger value="venta">Venta</TabsTrigger>
-        </TabsList>
+      {/* Pestañas */}
+      <div className="grid grid-cols-2 gap-1 p-2">
+        <button
+          className={`py-3 px-4 text-center rounded-sm transition-colors ${
+            tipoActivo === "presupuesto" ? "bg-zinc-800 text-white" : "bg-zinc-900 text-zinc-400 hover:bg-zinc-800"
+          }`}
+          onClick={() => setTipoActivo("presupuesto")}
+        >
+          Presupuesto
+        </button>
+        <button
+          className={`py-3 px-4 text-center rounded-sm transition-colors ${
+            tipoActivo === "venta" ? "bg-zinc-800 text-white" : "bg-zinc-900 text-zinc-400 hover:bg-zinc-800"
+          }`}
+          onClick={() => setTipoActivo("venta")}
+        >
+          Venta
+        </button>
+      </div>
 
-        <TabsContent value="presupuesto">
-          <div className="flex justify-between items-center mb-4">
-            <h2 className="text-xl font-semibold">Resúmenes de Presupuesto</h2>
-            <Dialog
-              open={dialogOpen && nuevoRFTipo === "presupuesto"}
-              onOpenChange={(open) => {
-                setDialogOpen(open)
-                if (open) setNuevoRFTipo("presupuesto")
-              }}
-            >
-              <DialogTrigger asChild>
-                <Button>
-                  <PlusCircle className="h-4 w-4 mr-2" />
-                  Nuevo RF Presupuesto
-                </Button>
-              </DialogTrigger>
-              <DialogContent className="sm:max-w-[500px]">
-                <DialogHeader>
-                  <DialogTitle>Nuevo Resumen Financiero - Presupuesto</DialogTitle>
-                  <DialogDescription>
-                    Crea un nuevo resumen financiero de presupuesto para este proyecto.
-                  </DialogDescription>
-                </DialogHeader>
-                <div className="grid gap-4 py-4">
-                  <div className="grid grid-cols-4 items-center gap-4">
-                    <Label htmlFor="nombre" className="text-right">
-                      Nombre
-                    </Label>
-                    <Input
-                      id="nombre"
-                      value={nuevoRFNombre}
-                      onChange={(e) => setNuevoRFNombre(e.target.value)}
-                      className="col-span-3"
-                      placeholder="Ej: Presupuesto Fase 1"
-                    />
-                  </div>
-                  <div className="grid grid-cols-4 items-center gap-4">
-                    <Label htmlFor="descripcion" className="text-right">
-                      Descripción
-                    </Label>
-                    <Input
-                      id="descripcion"
-                      value={nuevoRFDescripcion}
-                      onChange={(e) => setNuevoRFDescripcion(e.target.value)}
-                      className="col-span-3"
-                      placeholder="Breve descripción del resumen financiero"
-                    />
-                  </div>
-                  <div className="grid grid-cols-4 items-center gap-4">
-                    <Label htmlFor="costoDirecto" className="text-right">
-                      Costo Directo
-                    </Label>
-                    <Input
-                      id="costoDirecto"
-                      type="number"
-                      value={nuevoRFCostoDirecto}
-                      onChange={(e) => setNuevoRFCostoDirecto(e.target.value)}
-                      className="col-span-3"
-                    />
-                  </div>
-                  <div className="grid grid-cols-4 items-center gap-4">
-                    <Label htmlFor="costoIndirecto" className="text-right">
-                      Costo Indirecto
-                    </Label>
-                    <Input
-                      id="costoIndirecto"
-                      type="number"
-                      value={nuevoRFCostoIndirecto}
-                      onChange={(e) => setNuevoRFCostoIndirecto(e.target.value)}
-                      className="col-span-3"
-                    />
-                  </div>
-                  <div className="grid grid-cols-4 items-center gap-4">
-                    <Label htmlFor="utilidad" className="text-right">
-                      Utilidad
-                    </Label>
-                    <Input
-                      id="utilidad"
-                      type="number"
-                      value={nuevoRFUtilidad}
-                      onChange={(e) => setNuevoRFUtilidad(e.target.value)}
-                      className="col-span-3"
-                    />
-                  </div>
-                  <div className="grid grid-cols-4 items-center gap-4">
-                    <Label htmlFor="impuestos" className="text-right">
-                      Impuestos
-                    </Label>
-                    <Input
-                      id="impuestos"
-                      type="number"
-                      value={nuevoRFImpuestos}
-                      onChange={(e) => setNuevoRFImpuestos(e.target.value)}
-                      className="col-span-3"
-                    />
-                  </div>
-                  <div className="grid grid-cols-4 items-center gap-4">
-                    <Label htmlFor="notas" className="text-right">
-                      Notas
-                    </Label>
-                    <Textarea
-                      id="notas"
-                      value={nuevoRFNotas}
-                      onChange={(e) => setNuevoRFNotas(e.target.value)}
-                      className="col-span-3"
-                      placeholder="Notas adicionales"
-                    />
-                  </div>
-                  <div className="grid grid-cols-4 items-center gap-4">
-                    <Label className="text-right font-bold">Total</Label>
-                    <div className="col-span-3 font-bold">Q{calcularTotal().toFixed(2)}</div>
-                  </div>
-                </div>
-                <DialogFooter>
-                  <Button variant="outline" onClick={() => setDialogOpen(false)}>
-                    Cancelar
-                  </Button>
-                  <Button onClick={crearNuevoRF}>Crear</Button>
-                </DialogFooter>
-              </DialogContent>
-            </Dialog>
-          </div>
+      {/* Contenido */}
+      <div className="p-4">
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-lg font-medium">Resúmenes de {tipoActivo === "presupuesto" ? "Presupuesto" : "Venta"}</h2>
+          <Button
+            onClick={() => crearNuevoRF(tipoActivo)}
+            className="bg-zinc-800 hover:bg-zinc-700 text-white border-none"
+          >
+            Nuevo RF {tipoActivo === "presupuesto" ? "Presupuesto" : "Venta"}
+          </Button>
+        </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {resumenesPresupuesto.length > 0 ? (
-              resumenesPresupuesto.map((rf) => (
-                <Card key={rf.id} className="hover:shadow-md transition-shadow">
-                  <CardHeader className="pb-2">
-                    <div className="flex justify-between items-start">
-                      <div>
-                        <CardTitle className="text-lg">{rf.nombre}</CardTitle>
-                        <CardDescription className="text-sm">{new Date(rf.fecha).toLocaleDateString()}</CardDescription>
+        {/* Tabla */}
+        <div className="w-full overflow-x-auto">
+          <table className="w-full border-collapse">
+            <thead>
+              <tr className="border-b border-zinc-800">
+                <th className="text-left py-2 px-4 font-medium text-zinc-400">Nombre</th>
+                <th className="text-left py-2 px-4 font-medium text-zinc-400">Descripción</th>
+                <th className="text-left py-2 px-4 font-medium text-zinc-400">Fecha</th>
+                <th className="text-right py-2 px-4 font-medium text-zinc-400">Total</th>
+                <th className="text-right py-2 px-4 font-medium text-zinc-400">Acciones</th>
+              </tr>
+            </thead>
+            <tbody>
+              {resumenesFinancieros
+                .filter((rf) => rf.tipo === tipoActivo)
+                .map((rf) => (
+                  <tr key={rf.id} className="border-b border-zinc-800 hover:bg-zinc-900">
+                    <td className="py-3 px-4">{rf.nombre}</td>
+                    <td className="py-3 px-4">{rf.descripcion || "-"}</td>
+                    <td className="py-3 px-4">{formatDate(rf.fecha)}</td>
+                    <td className="py-3 px-4 text-right">${formatCurrency(rf.total)}</td>
+                    <td className="py-3 px-4">
+                      <div className="flex justify-end space-x-2">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => verDetalleRF(rf.id)}
+                          className="h-8 px-2 text-zinc-400 hover:text-white"
+                        >
+                          <Eye className="h-4 w-4 mr-1" />
+                          Ver
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => eliminarRF(rf.id)}
+                          className="h-8 px-2 text-red-500 hover:text-red-400"
+                        >
+                          <Trash2 className="h-4 w-4 mr-1" />
+                          Eliminar
+                        </Button>
                       </div>
-                      <Button variant="ghost" size="icon" onClick={() => eliminarRF(rf)} className="text-red-500">
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="flex items-center mb-2">
-                      <Calculator className="h-4 w-4 text-blue-500 mr-2" />
-                      <span className="text-2xl font-bold">Q{rf.total.toFixed(2)}</span>
-                    </div>
-                    <p className="text-sm text-gray-500 dark:text-gray-400 mb-4 line-clamp-2">
-                      {rf.descripcion || "Sin descripción"}
-                    </p>
-                    <Button onClick={() => verDetalleRF(rf.id)} className="w-full">
-                      <Eye className="h-4 w-4 mr-2" />
-                      Ver Detalle
-                    </Button>
-                  </CardContent>
-                </Card>
-              ))
-            ) : (
-              <div className="col-span-full bg-white dark:bg-zinc-800 rounded-lg p-8 text-center">
-                <p className="text-gray-500 dark:text-gray-400">
-                  No hay resúmenes financieros de presupuesto. Crea uno nuevo con el botón "Nuevo RF Presupuesto".
-                </p>
-              </div>
-            )}
-          </div>
-        </TabsContent>
-
-        <TabsContent value="venta">
-          <div className="flex justify-between items-center mb-4">
-            <h2 className="text-xl font-semibold">Resúmenes de Venta</h2>
-            <Dialog
-              open={dialogOpen && nuevoRFTipo === "venta"}
-              onOpenChange={(open) => {
-                setDialogOpen(open)
-                if (open) setNuevoRFTipo("venta")
-              }}
-            >
-              <DialogTrigger asChild>
-                <Button>
-                  <PlusCircle className="h-4 w-4 mr-2" />
-                  Nuevo RF Venta
-                </Button>
-              </DialogTrigger>
-              <DialogContent className="sm:max-w-[500px]">
-                <DialogHeader>
-                  <DialogTitle>Nuevo Resumen Financiero - Venta</DialogTitle>
-                  <DialogDescription>Crea un nuevo resumen financiero de venta para este proyecto.</DialogDescription>
-                </DialogHeader>
-                <div className="grid gap-4 py-4">
-                  <div className="grid grid-cols-4 items-center gap-4">
-                    <Label htmlFor="nombre" className="text-right">
-                      Nombre
-                    </Label>
-                    <Input
-                      id="nombre"
-                      value={nuevoRFNombre}
-                      onChange={(e) => setNuevoRFNombre(e.target.value)}
-                      className="col-span-3"
-                      placeholder="Ej: Venta Fase 1"
-                    />
-                  </div>
-                  <div className="grid grid-cols-4 items-center gap-4">
-                    <Label htmlFor="descripcion" className="text-right">
-                      Descripción
-                    </Label>
-                    <Input
-                      id="descripcion"
-                      value={nuevoRFDescripcion}
-                      onChange={(e) => setNuevoRFDescripcion(e.target.value)}
-                      className="col-span-3"
-                      placeholder="Breve descripción del resumen financiero"
-                    />
-                  </div>
-                  <div className="grid grid-cols-4 items-center gap-4">
-                    <Label htmlFor="costoDirecto" className="text-right">
-                      Costo Directo
-                    </Label>
-                    <Input
-                      id="costoDirecto"
-                      type="number"
-                      value={nuevoRFCostoDirecto}
-                      onChange={(e) => setNuevoRFCostoDirecto(e.target.value)}
-                      className="col-span-3"
-                    />
-                  </div>
-                  <div className="grid grid-cols-4 items-center gap-4">
-                    <Label htmlFor="costoIndirecto" className="text-right">
-                      Costo Indirecto
-                    </Label>
-                    <Input
-                      id="costoIndirecto"
-                      type="number"
-                      value={nuevoRFCostoIndirecto}
-                      onChange={(e) => setNuevoRFCostoIndirecto(e.target.value)}
-                      className="col-span-3"
-                    />
-                  </div>
-                  <div className="grid grid-cols-4 items-center gap-4">
-                    <Label htmlFor="utilidad" className="text-right">
-                      Utilidad
-                    </Label>
-                    <Input
-                      id="utilidad"
-                      type="number"
-                      value={nuevoRFUtilidad}
-                      onChange={(e) => setNuevoRFUtilidad(e.target.value)}
-                      className="col-span-3"
-                    />
-                  </div>
-                  <div className="grid grid-cols-4 items-center gap-4">
-                    <Label htmlFor="impuestos" className="text-right">
-                      Impuestos
-                    </Label>
-                    <Input
-                      id="impuestos"
-                      type="number"
-                      value={nuevoRFImpuestos}
-                      onChange={(e) => setNuevoRFImpuestos(e.target.value)}
-                      className="col-span-3"
-                    />
-                  </div>
-                  <div className="grid grid-cols-4 items-center gap-4">
-                    <Label htmlFor="notas" className="text-right">
-                      Notas
-                    </Label>
-                    <Textarea
-                      id="notas"
-                      value={nuevoRFNotas}
-                      onChange={(e) => setNuevoRFNotas(e.target.value)}
-                      className="col-span-3"
-                      placeholder="Notas adicionales"
-                    />
-                  </div>
-                  <div className="grid grid-cols-4 items-center gap-4">
-                    <Label className="text-right font-bold">Total</Label>
-                    <div className="col-span-3 font-bold">Q{calcularTotal().toFixed(2)}</div>
-                  </div>
-                </div>
-                <DialogFooter>
-                  <Button variant="outline" onClick={() => setDialogOpen(false)}>
-                    Cancelar
-                  </Button>
-                  <Button onClick={crearNuevoRF}>Crear</Button>
-                </DialogFooter>
-              </DialogContent>
-            </Dialog>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {resumenesVenta.length > 0 ? (
-              resumenesVenta.map((rf) => (
-                <Card key={rf.id} className="hover:shadow-md transition-shadow">
-                  <CardHeader className="pb-2">
-                    <div className="flex justify-between items-start">
-                      <div>
-                        <CardTitle className="text-lg">{rf.nombre}</CardTitle>
-                        <CardDescription className="text-sm">{new Date(rf.fecha).toLocaleDateString()}</CardDescription>
-                      </div>
-                      <Button variant="ghost" size="icon" onClick={() => eliminarRF(rf)} className="text-red-500">
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="flex items-center mb-2">
-                      <DollarSign className="h-4 w-4 text-green-500 mr-2" />
-                      <span className="text-2xl font-bold">Q{rf.total.toFixed(2)}</span>
-                    </div>
-                    <p className="text-sm text-gray-500 dark:text-gray-400 mb-4 line-clamp-2">
-                      {rf.descripcion || "Sin descripción"}
-                    </p>
-                    <Button onClick={() => verDetalleRF(rf.id)} className="w-full">
-                      <Eye className="h-4 w-4 mr-2" />
-                      Ver Detalle
-                    </Button>
-                  </CardContent>
-                </Card>
-              ))
-            ) : (
-              <div className="col-span-full bg-white dark:bg-zinc-800 rounded-lg p-8 text-center">
-                <p className="text-gray-500 dark:text-gray-400">
-                  No hay resúmenes financieros de venta. Crea uno nuevo con el botón "Nuevo RF Venta".
-                </p>
-              </div>
-            )}
-          </div>
-        </TabsContent>
-      </Tabs>
+                    </td>
+                  </tr>
+                ))}
+              {resumenesFinancieros.filter((rf) => rf.tipo === tipoActivo).length === 0 && (
+                <tr>
+                  <td colSpan={5} className="py-8 text-center text-zinc-500">
+                    No hay resúmenes financieros de {tipoActivo} disponibles.
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
     </div>
   )
 }

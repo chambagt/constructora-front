@@ -4,12 +4,14 @@ import { useState, useEffect } from "react"
 import { useParams, useRouter } from "next/navigation"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { ArrowLeft, PlusCircle, Eye, X, Search, Calculator, DollarSign, Save, Pencil } from "lucide-react"
+import { ArrowLeft, Search, Trash2, PlusCircle } from "lucide-react"
 import type { Proyecto } from "@/components/kokonutui/nuevo-proyecto-form"
 import { useToast } from "@/hooks/use-toast"
 import { Input } from "@/components/ui/input"
-import { Textarea } from "@/components/ui/textarea"
-import { Label } from "@/components/ui/label"
+import { TablaCedulasAsociadas } from "@/components/kokonutui/tabla-cedulas-asociadas"
+
+// Importar el nuevo componente
+import { ResumenFinancieroHeader } from "@/components/kokonutui/resumen-financiero-header"
 
 // Tipo para el Resumen Financiero
 type ResumenFinanciero = {
@@ -38,6 +40,26 @@ type Cedula = {
   proyecto?: string
 }
 
+// Tipo para los elementos detallados
+type ElementoDetallado = {
+  id: string
+  cedulaId: string
+  cedulaNombre: string
+  meta: string
+  renglon: string
+  actividad: string
+  unidad: string
+  cantidad: number
+  costoDirecto: number
+  porcentajeInp: number
+  montoInp: number
+  porcentajeFactInt: number
+  montoIndirUtilidad: number
+  total: number
+  precioUnitario: number
+  porcentaje: number
+}
+
 export default function DetalleResumenFinancieroPage() {
   const params = useParams()
   const router = useRouter()
@@ -48,6 +70,7 @@ export default function DetalleResumenFinancieroPage() {
   const [proyecto, setProyecto] = useState<Proyecto | null>(null)
   const [resumenFinanciero, setResumenFinanciero] = useState<ResumenFinanciero | null>(null)
   const [cedulasAsociadas, setCedulasAsociadas] = useState<Cedula[]>([])
+  const [elementosDetallados, setElementosDetallados] = useState<ElementoDetallado[]>([])
   const [cedulasDisponibles, setCedulasDisponibles] = useState<Cedula[]>([])
   const [mostrarSeleccionCedulas, setMostrarSeleccionCedulas] = useState(false)
   const [busquedaCedula, setBusquedaCedula] = useState("")
@@ -56,11 +79,6 @@ export default function DetalleResumenFinancieroPage() {
   // Estados para edición
   const [editNombre, setEditNombre] = useState("")
   const [editDescripcion, setEditDescripcion] = useState("")
-  const [editCostoDirecto, setEditCostoDirecto] = useState("")
-  const [editCostoIndirecto, setEditCostoIndirecto] = useState("")
-  const [editUtilidad, setEditUtilidad] = useState("")
-  const [editImpuestos, setEditImpuestos] = useState("")
-  const [editNotas, setEditNotas] = useState("")
 
   // Cargar proyecto, RF y cédulas
   useEffect(() => {
@@ -80,18 +98,39 @@ export default function DetalleResumenFinancieroPage() {
         // Inicializar estados de edición
         setEditNombre(resumenEncontrado.nombre)
         setEditDescripcion(resumenEncontrado.descripcion || "")
-        setEditCostoDirecto(resumenEncontrado.costoDirecto.toString())
-        setEditCostoIndirecto(resumenEncontrado.costoIndirecto.toString())
-        setEditUtilidad(resumenEncontrado.utilidad.toString())
-        setEditImpuestos(resumenEncontrado.impuestos.toString())
-        setEditNotas(resumenEncontrado.notas || "")
 
         // Cargar todas las cédulas
         const todasLasCedulas = JSON.parse(localStorage.getItem("cedulas") || "[]")
 
         // Obtener las cédulas asociadas al RF
         const cedulasDelRF = todasLasCedulas.filter((c: Cedula) => resumenEncontrado.cedulasAsociadas.includes(c.id))
+
+        // Crear elementos detallados para cada cédula
+        const elementos: ElementoDetallado[] = []
+        cedulasDelRF.forEach((cedula: Cedula) => {
+          // Crear un elemento detallado para cada cédula
+          elementos.push({
+            id: `elem-${cedula.id}`,
+            cedulaId: cedula.id,
+            cedulaNombre: cedula.nombre,
+            meta: `Meta-${cedula.id.substring(0, 3)}`,
+            renglon: `R-${cedula.id.substring(0, 4)}`,
+            actividad: cedula.nombre || "Actividad de construcción",
+            unidad: "m²",
+            cantidad: 100,
+            costoDirecto: (cedula.total || 0) * 0.7,
+            porcentajeInp: 12,
+            montoInp: (cedula.total || 0) * 0.12,
+            porcentajeFactInt: 15,
+            montoIndirUtilidad: (cedula.total || 0) * 0.15,
+            total: cedula.total || 0,
+            precioUnitario: (cedula.total || 0) / 100,
+            porcentaje: 100,
+          })
+        })
+
         setCedulasAsociadas(cedulasDelRF)
+        setElementosDetallados(elementos)
 
         // Cédulas disponibles (no asociadas a este RF)
         const cedulasNoAsociadas = todasLasCedulas.filter(
@@ -104,15 +143,6 @@ export default function DetalleResumenFinancieroPage() {
       }
     }
   }, [proyectoId, rfId, router])
-
-  // Calcular total para la edición
-  const calcularTotalEdicion = () => {
-    const cd = Number.parseFloat(editCostoDirecto) || 0
-    const ci = Number.parseFloat(editCostoIndirecto) || 0
-    const ut = Number.parseFloat(editUtilidad) || 0
-    const imp = Number.parseFloat(editImpuestos) || 0
-    return cd + ci + ut + imp
-  }
 
   // Guardar cambios en el RF
   const guardarCambios = () => {
@@ -131,12 +161,6 @@ export default function DetalleResumenFinancieroPage() {
       ...resumenFinanciero,
       nombre: editNombre,
       descripcion: editDescripcion,
-      costoDirecto: Number.parseFloat(editCostoDirecto) || 0,
-      costoIndirecto: Number.parseFloat(editCostoIndirecto) || 0,
-      utilidad: Number.parseFloat(editUtilidad) || 0,
-      impuestos: Number.parseFloat(editImpuestos) || 0,
-      total: calcularTotalEdicion(),
-      notas: editNotas,
       fecha: new Date().toISOString(),
     }
 
@@ -187,9 +211,30 @@ export default function DetalleResumenFinancieroPage() {
       localStorage.setItem("resumenesFinancieros", JSON.stringify(resumenesActualizados))
     }
 
+    // Crear elemento detallado para la cédula
+    const nuevoElemento: ElementoDetallado = {
+      id: `elem-${cedula.id}`,
+      cedulaId: cedula.id,
+      cedulaNombre: cedula.nombre,
+      meta: `Meta-${cedula.id.substring(0, 3)}`,
+      renglon: `R-${cedula.id.substring(0, 4)}`,
+      actividad: cedula.nombre || "Actividad de construcción",
+      unidad: "m²",
+      cantidad: 100,
+      costoDirecto: (cedula.total || 0) * 0.7,
+      porcentajeInp: 12,
+      montoInp: (cedula.total || 0) * 0.12,
+      porcentajeFactInt: 15,
+      montoIndirUtilidad: (cedula.total || 0) * 0.15,
+      total: cedula.total || 0,
+      precioUnitario: (cedula.total || 0) / 100,
+      porcentaje: 100,
+    }
+
     // Actualizar estado
     setResumenFinanciero(rfActualizado)
     setCedulasAsociadas([...cedulasAsociadas, cedula])
+    setElementosDetallados([...elementosDetallados, nuevoElemento])
     setCedulasDisponibles(cedulasDisponibles.filter((c) => c.id !== cedula.id))
 
     toast({
@@ -199,11 +244,15 @@ export default function DetalleResumenFinancieroPage() {
   }
 
   // Desasociar cédula del RF
-  const desasociarCedula = (cedula: Cedula) => {
+  const desasociarCedula = (cedulaId: string) => {
     if (!resumenFinanciero) return
 
+    // Encontrar la cédula
+    const cedula = cedulasAsociadas.find((c) => c.id === cedulaId)
+    if (!cedula) return
+
     // Actualizar la lista de cédulas asociadas
-    const nuevasCedulasAsociadas = resumenFinanciero.cedulasAsociadas.filter((id) => id !== cedula.id)
+    const nuevasCedulasAsociadas = resumenFinanciero.cedulasAsociadas.filter((id) => id !== cedulaId)
 
     // Actualizar RF
     const rfActualizado = {
@@ -221,10 +270,14 @@ export default function DetalleResumenFinancieroPage() {
       localStorage.setItem("resumenesFinancieros", JSON.stringify(resumenesActualizados))
     }
 
+    // Eliminar elementos asociados a esta cédula
+    const elementosActualizados = elementosDetallados.filter((elemento) => elemento.cedulaId !== cedulaId)
+
     // Actualizar estado
     setResumenFinanciero(rfActualizado)
     setCedulasDisponibles([...cedulasDisponibles, cedula])
-    setCedulasAsociadas(cedulasAsociadas.filter((c) => c.id !== cedula.id))
+    setCedulasAsociadas(cedulasAsociadas.filter((c) => c.id !== cedulaId))
+    setElementosDetallados(elementosActualizados)
 
     toast({
       title: "Cédula desasociada",
@@ -237,12 +290,67 @@ export default function DetalleResumenFinancieroPage() {
     cedula.nombre.toLowerCase().includes(busquedaCedula.toLowerCase()),
   )
 
-  // Crear nueva cédula (redirección a la página de creación)
+  // Función para crear una nueva cédula directamente
   const crearNuevaCedula = () => {
     if (!resumenFinanciero) return
 
-    // Redirigir a la página de creación de cédulas con el ID del proyecto
-    router.push(`/cedulas/nueva?proyectoId=${proyectoId}`)
+    try {
+      // Crear un ID único para la nueva cédula
+      const cedulaId = Date.now().toString()
+
+      // Crear una nueva cédula en blanco
+      const nuevaCedula = {
+        id: cedulaId,
+        nombre: "Nueva Cédula",
+        fecha: new Date().toISOString(),
+        elementos: [],
+        total: 0,
+        proyecto: proyectoId,
+      }
+
+      // Guardar la nueva cédula en localStorage
+      if (typeof window !== "undefined") {
+        const cedulasGuardadas = JSON.parse(localStorage.getItem("cedulas") || "[]")
+        cedulasGuardadas.push(nuevaCedula)
+        localStorage.setItem("cedulas", JSON.stringify(cedulasGuardadas))
+
+        // Notificar al usuario
+        toast({
+          title: "Cédula creada",
+          description: "Se ha creado una nueva cédula. Ahora serás redirigido para editarla.",
+        })
+
+        // Redirigir a la página de edición de la cédula
+        router.push(`/cedulas/${cedulaId}`)
+      }
+    } catch (error) {
+      console.error("Error al crear la cédula:", error)
+      toast({
+        title: "Error",
+        description: "Hubo un problema al crear la cédula. Inténtalo de nuevo.",
+        variant: "destructive",
+      })
+    }
+  }
+
+  // Eliminar RF
+  const eliminarRF = () => {
+    if (!resumenFinanciero) return
+
+    // Eliminar de localStorage
+    if (typeof window !== "undefined") {
+      const resumenesGuardados = JSON.parse(localStorage.getItem("resumenesFinancieros") || "[]")
+      const resumenesActualizados = resumenesGuardados.filter((r: ResumenFinanciero) => r.id !== rfId)
+      localStorage.setItem("resumenesFinancieros", JSON.stringify(resumenesActualizados))
+    }
+
+    // Redirigir a la página de resúmenes financieros
+    router.push(`/proyectos/${proyectoId}/resumenes-financieros`)
+
+    toast({
+      title: "Resumen financiero eliminado",
+      description: "El resumen financiero ha sido eliminado con éxito.",
+    })
   }
 
   if (!resumenFinanciero) {
@@ -250,202 +358,39 @@ export default function DetalleResumenFinancieroPage() {
   }
 
   return (
-    <div className="container mx-auto py-10">
-      <div className="flex items-center mb-6">
-        <Button
-          variant="outline"
-          onClick={() => router.push(`/proyectos/${proyectoId}/resumenes-financieros`)}
-          className="mr-4"
-        >
-          <ArrowLeft className="h-4 w-4 mr-2" />
-          Volver a Resúmenes Financieros
-        </Button>
-        <div className="flex-1">
-          <h1 className="text-2xl font-bold">
-            {resumenFinanciero.tipo === "presupuesto"
-              ? "Resumen Financiero - Presupuesto"
-              : "Resumen Financiero - Venta"}
-          </h1>
-          <p className="text-gray-500 dark:text-gray-400">{proyecto?.nombre || "Cargando..."}</p>
+    <div className="container mx-auto py-6 px-4">
+      <div className="flex items-center justify-between mb-6">
+        <div className="flex items-center">
+          <Button
+            variant="outline"
+            onClick={() => router.push(`/proyectos/${proyectoId}/resumenes-financieros`)}
+            className="mr-4"
+          >
+            <ArrowLeft className="h-4 w-4 mr-2" />
+            Volver al Proyecto
+          </Button>
+          <div>
+            <h1 className="text-2xl font-bold">
+              Resumen Financiero (RF) - {resumenFinanciero.tipo === "presupuesto" ? "Presupuesto" : "Venta"}
+            </h1>
+            <p className="text-gray-500 dark:text-gray-400">{proyecto?.nombre || "Cargando..."}</p>
+          </div>
         </div>
-        <Button onClick={() => setModoEdicion(!modoEdicion)}>
-          {modoEdicion ? (
-            <>
-              <X className="h-4 w-4 mr-2" />
-              Cancelar Edición
-            </>
-          ) : (
-            <>
-              <Pencil className="h-4 w-4 mr-2" />
-              Editar RF
-            </>
-          )}
+        <Button variant="destructive" onClick={eliminarRF}>
+          <Trash2 className="h-4 w-4 mr-2" />
+          Eliminar RF
         </Button>
       </div>
 
       {/* Detalles del RF */}
-      <Card className="mb-8">
-        <CardHeader className="flex flex-row items-center justify-between">
-          <CardTitle className="flex items-center">
-            {resumenFinanciero.tipo === "presupuesto" ? (
-              <Calculator className="mr-2 h-5 w-5" />
-            ) : (
-              <DollarSign className="mr-2 h-5 w-5" />
-            )}
-            {modoEdicion ? "Editar Resumen Financiero" : resumenFinanciero.nombre}
-          </CardTitle>
-          {modoEdicion && (
-            <Button onClick={guardarCambios}>
-              <Save className="h-4 w-4 mr-2" />
-              Guardar Cambios
-            </Button>
-          )}
-        </CardHeader>
-        <CardContent>
-          {modoEdicion ? (
-            <div className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="nombre">Nombre</Label>
-                  <Input
-                    id="nombre"
-                    value={editNombre}
-                    onChange={(e) => setEditNombre(e.target.value)}
-                    placeholder="Nombre del resumen financiero"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="descripcion">Descripción</Label>
-                  <Input
-                    id="descripcion"
-                    value={editDescripcion}
-                    onChange={(e) => setEditDescripcion(e.target.value)}
-                    placeholder="Descripción del resumen financiero"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="costoDirecto">Costo Directo (Q)</Label>
-                  <Input
-                    id="costoDirecto"
-                    type="number"
-                    value={editCostoDirecto}
-                    onChange={(e) => setEditCostoDirecto(e.target.value)}
-                    placeholder="0.00"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="costoIndirecto">Costo Indirecto (Q)</Label>
-                  <Input
-                    id="costoIndirecto"
-                    type="number"
-                    value={editCostoIndirecto}
-                    onChange={(e) => setEditCostoIndirecto(e.target.value)}
-                    placeholder="0.00"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="utilidad">Utilidad (Q)</Label>
-                  <Input
-                    id="utilidad"
-                    type="number"
-                    value={editUtilidad}
-                    onChange={(e) => setEditUtilidad(e.target.value)}
-                    placeholder="0.00"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="impuestos">Impuestos (Q)</Label>
-                  <Input
-                    id="impuestos"
-                    type="number"
-                    value={editImpuestos}
-                    onChange={(e) => setEditImpuestos(e.target.value)}
-                    placeholder="0.00"
-                  />
-                </div>
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="notas">Notas</Label>
-                <Textarea
-                  id="notas"
-                  value={editNotas}
-                  onChange={(e) => setEditNotas(e.target.value)}
-                  placeholder="Notas adicionales sobre el resumen financiero"
-                  rows={3}
-                />
-              </div>
-              <div className="bg-gray-50 dark:bg-zinc-800 p-4 rounded-md">
-                <div className="flex justify-between items-center">
-                  <span className="font-medium">Total:</span>
-                  <span className="text-xl font-bold">Q{calcularTotalEdicion().toFixed(2)}</span>
-                </div>
-              </div>
-            </div>
-          ) : (
-            <div className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div>
-                  <h3 className="text-lg font-semibold mb-2">Información General</h3>
-                  <div className="space-y-2">
-                    <div className="flex justify-between">
-                      <span className="text-gray-600 dark:text-gray-400">Nombre:</span>
-                      <span className="font-medium">{resumenFinanciero.nombre}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-gray-600 dark:text-gray-400">Tipo:</span>
-                      <span className="font-medium capitalize">{resumenFinanciero.tipo}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-gray-600 dark:text-gray-400">Fecha:</span>
-                      <span className="font-medium">{new Date(resumenFinanciero.fecha).toLocaleDateString()}</span>
-                    </div>
-                    {resumenFinanciero.descripcion && (
-                      <div className="flex justify-between">
-                        <span className="text-gray-600 dark:text-gray-400">Descripción:</span>
-                        <span className="font-medium">{resumenFinanciero.descripcion}</span>
-                      </div>
-                    )}
-                  </div>
-                </div>
-                <div>
-                  <h3 className="text-lg font-semibold mb-2">Resumen Financiero</h3>
-                  <div className="space-y-2">
-                    <div className="flex justify-between">
-                      <span className="text-gray-600 dark:text-gray-400">Costo Directo:</span>
-                      <span className="font-medium">Q{resumenFinanciero.costoDirecto.toFixed(2)}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-gray-600 dark:text-gray-400">Costo Indirecto:</span>
-                      <span className="font-medium">Q{resumenFinanciero.costoIndirecto.toFixed(2)}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-gray-600 dark:text-gray-400">Utilidad:</span>
-                      <span className="font-medium">Q{resumenFinanciero.utilidad.toFixed(2)}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-gray-600 dark:text-gray-400">Impuestos:</span>
-                      <span className="font-medium">Q{resumenFinanciero.impuestos.toFixed(2)}</span>
-                    </div>
-                    <div className="border-t border-gray-200 dark:border-gray-700 pt-2 mt-2">
-                      <div className="flex justify-between">
-                        <span className="font-bold">TOTAL:</span>
-                        <span className="font-bold">Q{resumenFinanciero.total.toFixed(2)}</span>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {resumenFinanciero.notas && (
-                <div className="bg-gray-50 dark:bg-zinc-800 p-4 rounded-lg">
-                  <h4 className="text-md font-medium mb-2">Notas</h4>
-                  <p className="text-sm text-gray-600 dark:text-gray-400">{resumenFinanciero.notas}</p>
-                </div>
-              )}
-            </div>
-          )}
-        </CardContent>
-      </Card>
+      {resumenFinanciero && (
+        <ResumenFinancieroHeader
+          nombre={resumenFinanciero.nombre}
+          tipo={resumenFinanciero.tipo === "presupuesto" ? "Presupuesto" : "Venta"}
+          fecha={new Date(resumenFinanciero.fecha).toLocaleDateString()}
+          onEdit={() => setModoEdicion(!modoEdicion)}
+        />
+      )}
 
       {/* Cédulas Asociadas */}
       <Card className="mb-8">
@@ -460,7 +405,7 @@ export default function DetalleResumenFinancieroPage() {
             </Button>
             <Button onClick={crearNuevaCedula}>
               <PlusCircle className="h-4 w-4 mr-2" />
-              Nueva Cédula
+              Crear Cédula
             </Button>
           </div>
         </CardHeader>
@@ -487,16 +432,16 @@ export default function DetalleResumenFinancieroPage() {
                     <table className="w-full">
                       <thead>
                         <tr className="bg-gray-50 dark:bg-zinc-700">
-                          <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                          <th className="px-2 py-1 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
                             Nombre
                           </th>
-                          <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                          <th className="px-2 py-1 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
                             Fecha
                           </th>
-                          <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                          <th className="px-2 py-1 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
                             Total
                           </th>
-                          <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                          <th className="px-2 py-1 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
                             Acción
                           </th>
                         </tr>
@@ -504,15 +449,15 @@ export default function DetalleResumenFinancieroPage() {
                       <tbody className="divide-y divide-gray-200 dark:divide-zinc-700">
                         {cedulasFiltradas.map((cedula) => (
                           <tr key={cedula.id} className="hover:bg-gray-50 dark:hover:bg-zinc-700">
-                            <td className="px-4 py-2 whitespace-nowrap text-sm">{cedula.nombre}</td>
-                            <td className="px-4 py-2 whitespace-nowrap text-sm">
+                            <td className="px-2 py-1 whitespace-nowrap text-xs">{cedula.nombre}</td>
+                            <td className="px-2 py-1 whitespace-nowrap text-xs">
                               {new Date(cedula.fecha).toLocaleDateString()}
                             </td>
-                            <td className="px-4 py-2 whitespace-nowrap text-sm font-medium">
-                              Q{cedula.total.toFixed(2)}
+                            <td className="px-2 py-1 whitespace-nowrap text-xs font-medium">
+                              Q{(cedula.total || 0).toFixed(2)}
                             </td>
-                            <td className="px-4 py-2 whitespace-nowrap text-sm">
-                              <Button size="sm" onClick={() => asociarCedula(cedula)}>
+                            <td className="px-2 py-1 whitespace-nowrap text-xs">
+                              <Button size="xs" onClick={() => asociarCedula(cedula)}>
                                 Asociar
                               </Button>
                             </td>
@@ -530,60 +475,12 @@ export default function DetalleResumenFinancieroPage() {
             </Card>
           )}
 
-          {/* Lista de Cédulas Asociadas */}
-          {cedulasAsociadas.length > 0 ? (
-            <div className="overflow-x-auto bg-white dark:bg-zinc-800 rounded-lg shadow">
-              <table className="w-full">
-                <thead>
-                  <tr className="bg-gray-50 dark:bg-zinc-700">
-                    <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                      Nombre
-                    </th>
-                    <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                      Fecha
-                    </th>
-                    <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                      Elementos
-                    </th>
-                    <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                      Total
-                    </th>
-                    <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                      Acciones
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-200 dark:divide-zinc-700">
-                  {cedulasAsociadas.map((cedula) => (
-                    <tr key={cedula.id} className="hover:bg-gray-50 dark:hover:bg-zinc-700">
-                      <td className="px-4 py-2 whitespace-nowrap text-sm">{cedula.nombre}</td>
-                      <td className="px-4 py-2 whitespace-nowrap text-sm">
-                        {new Date(cedula.fecha).toLocaleDateString()}
-                      </td>
-                      <td className="px-4 py-2 whitespace-nowrap text-sm">{cedula.elementos.length}</td>
-                      <td className="px-4 py-2 whitespace-nowrap text-sm font-medium">Q{cedula.total.toFixed(2)}</td>
-                      <td className="px-4 py-2 whitespace-nowrap text-sm">
-                        <div className="flex space-x-2">
-                          <Button size="sm" variant="ghost" onClick={() => verDetalleCedula(cedula.id)}>
-                            <Eye className="h-4 w-4 mr-1" />
-                            Ver
-                          </Button>
-                          <Button size="sm" variant="ghost" onClick={() => desasociarCedula(cedula)}>
-                            <X className="h-4 w-4 mr-1" />
-                            Quitar
-                          </Button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          ) : (
-            <div className="bg-white dark:bg-zinc-800 rounded-lg p-8 text-center">
-              <p className="text-gray-500 dark:text-gray-400">No hay cédulas asociadas a este resumen financiero.</p>
-            </div>
-          )}
+          {/* Usar el componente TablaCedulasAsociadas para mostrar los campos detallados */}
+          <TablaCedulasAsociadas
+            elementosDetallados={elementosDetallados}
+            onVerDetalle={verDetalleCedula}
+            onDesasociar={desasociarCedula}
+          />
         </CardContent>
       </Card>
     </div>

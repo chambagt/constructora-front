@@ -214,12 +214,15 @@ const proyectosEjemplo = [
 
 interface NuevaCedulaProps {
   proyectoId?: string | null
+  rfId?: string | null
+  tipo?: string | null
+  cedulaId?: string | null
 }
 
-export function NuevaCedula({ proyectoId }: NuevaCedulaProps) {
+export function NuevaCedula({ proyectoId, rfId, tipo, cedulaId }: NuevaCedulaProps) {
   const { toast } = useToast()
   const router = useRouter()
-  const [nombreCedula, setNombreCedula] = useState("Nueva Cédula")
+  const [nombreCedula, setNombreCedula] = useState("")
   const [busquedaMT, setBusquedaMT] = useState("")
   const [busquedaMO, setBusquedaMO] = useState("")
   const [busquedaEQ, setBusquedaEQ] = useState("")
@@ -241,7 +244,7 @@ export function NuevaCedula({ proyectoId }: NuevaCedulaProps) {
   // Estados para la fila de entrada
   const [filaTarea, setFilaTarea] = useState<string>("")
   const [filaDescripcion, setFilaDescripcion] = useState<string>("")
-  const [filaUnidad, setFilaUnidad] = useState<string>("Unidad")
+  const [filaUnidad, setFilaUnidad] = useState<string>("")
   const [filaCantidad, setFilaCantidad] = useState<number>(0)
   const [filaPrecioUnitario, setFilaPrecioUnitario] = useState<number>(0)
   const [filaPorcentajeImp, setFilaPorcentajeImp] = useState<number>(0)
@@ -251,7 +254,41 @@ export function NuevaCedula({ proyectoId }: NuevaCedulaProps) {
   const [filaTotal, setFilaTotal] = useState<number>(0)
   const [filaPU, setFilaPU] = useState<number>(0)
   const [filaPorcentajeIncidencia, setFilaPorcentajeIncidencia] = useState<number>(0)
-  const [filaRendUnidad, setFilaRendUnidad] = useState<number>(1)
+  const [filaRendUnidad, setFilaRendUnidad] = useState<number>(0)
+
+  // Cargar datos existentes si estamos editando una cédula
+  // Modificar la función useEffect que carga los datos de la cédula existente
+  useEffect(() => {
+    if (typeof window !== "undefined" && cedulaId) {
+      try {
+        const cedulasGuardadas = JSON.parse(localStorage.getItem("cedulas") || "[]")
+        const cedulaEncontrada = cedulasGuardadas.find((c: any) => c.id === cedulaId)
+
+        if (cedulaEncontrada) {
+          console.log("Cédula encontrada para edición:", cedulaEncontrada)
+          // Cargar datos de la cédula existente
+          setNombreCedula(cedulaEncontrada.nombre || "")
+          setProyecto(cedulaEncontrada.proyecto || "")
+          setCliente(cedulaEncontrada.cliente || "")
+          setUbicacion(cedulaEncontrada.ubicacion || "")
+          setResponsable(cedulaEncontrada.responsable || "")
+          setNotas(cedulaEncontrada.notas || "")
+          setElementosSeleccionados(cedulaEncontrada.elementos || [])
+
+          // Cargar datos de la fila de tarea si existen
+          if (cedulaEncontrada.filaTarea) setFilaTarea(cedulaEncontrada.filaTarea)
+          if (cedulaEncontrada.filaDescripcion) setFilaDescripcion(cedulaEncontrada.filaDescripcion)
+          if (cedulaEncontrada.filaUnidad) setFilaUnidad(cedulaEncontrada.filaUnidad)
+          if (cedulaEncontrada.filaCantidad !== undefined) setFilaCantidad(cedulaEncontrada.filaCantidad)
+          if (cedulaEncontrada.filaRendUnidad !== undefined) setFilaRendUnidad(cedulaEncontrada.filaRendUnidad)
+        } else {
+          console.error("No se encontró la cédula con ID:", cedulaId)
+        }
+      } catch (error) {
+        console.error("Error al cargar la cédula para edición:", error)
+      }
+    }
+  }, [cedulaId])
 
   // Calcular el total de insumos como cantidad * rendimiento/unidad
   const filaTotalInsumos = filaCantidad * filaRendUnidad
@@ -259,66 +296,119 @@ export function NuevaCedula({ proyectoId }: NuevaCedulaProps) {
   // Calcular subtotales por familia
   const totalMateriales = elementosSeleccionados
     .filter((elemento) => elemento.familia === "MT")
-    .reduce((sum, elemento) => sum + elemento.total, 0)
+    .reduce((sum, elemento) => sum + (elemento.costoGlobal || elemento.precio * elemento.total), 0)
   const totalManoObra = elementosSeleccionados
     .filter((elemento) => elemento.familia === "MO")
-    .reduce((sum, elemento) => sum + elemento.total, 0)
+    .reduce((sum, elemento) => sum + (elemento.costoGlobal || elemento.precio * elemento.total), 0)
   const totalEquipos = elementosSeleccionados
     .filter((elemento) => elemento.familia === "EQ")
-    .reduce((sum, elemento) => sum + elemento.total, 0)
+    .reduce((sum, elemento) => sum + (elemento.costoGlobal || elemento.precio * elemento.total), 0)
 
-  // Calcular el total general de la cédula
-  const subtotalCedula = totalMateriales + totalManoObra + totalEquipos
+  // Calcular el total general de la cédula como la suma de los subtotales de costo global
+  const totalCedula = totalMateriales + totalManoObra + totalEquipos
+
+  // Modificar el cálculo del totalPU para que sea la suma de los subtotales de costo unidad de cada familia
+  // Calcular subtotales de costo unidad por familia
+  const totalCostoUnidadMateriales = elementosSeleccionados
+    .filter((elemento) => elemento.familia === "MT")
+    .reduce((sum, elemento) => sum + (elemento.costoUnidad || elemento.precio * (elemento.rendimiento || 1)), 0)
+  const totalCostoUnidadManoObra = elementosSeleccionados
+    .filter((elemento) => elemento.familia === "MO")
+    .reduce((sum, elemento) => sum + (elemento.costoUnidad || elemento.precio * (elemento.rendimiento || 1)), 0)
+  const totalCostoUnidadEquipos = elementosSeleccionados
+    .filter((elemento) => elemento.familia === "EQ")
+    .reduce((sum, elemento) => sum + (elemento.costoUnidad || elemento.precio * (elemento.rendimiento || 1)), 0)
+
+  // El total P/U es la suma de los subtotales de costo unidad de cada familia
+  const totalPU = totalCostoUnidadMateriales + totalCostoUnidadManoObra + totalCostoUnidadEquipos
+
+  // Calcular valores derivados después de tener el totalCedula
+  const subtotalCedula = totalCedula
   const impuestos = subtotalCedula * factorImpuestos
   const indirectos = subtotalCedula * factorIndirectos
   const utilidad = subtotalCedula * factorUtilidad
-  const totalCedula = subtotalCedula + impuestos + indirectos + utilidad
 
   // Actualizar totales de materiales cuando cambie filaCantidad
   useEffect(() => {
     if (elementosSeleccionados.length > 0) {
-      setElementosSeleccionados(
-        elementosSeleccionados.map((elemento) => {
-          if (elemento.familia === "MT") {
-            // Multiplicar solo por rendimiento/unidad * cantidad
-            const nuevoTotal = filaRendUnidad * filaCantidad
-            return {
-              ...elemento,
-              total: nuevoTotal,
-            }
+      const updatedElementos = elementosSeleccionados.map((elemento) => {
+        if (elemento.familia === "MT") {
+          // Multiplicar solo por rendimiento/unidad * cantidad
+          const nuevoTotal = filaRendUnidad * filaCantidad
+          return {
+            ...elemento,
+            total: nuevoTotal,
           }
-          return elemento
-        }),
-      )
+        }
+        return elemento
+      })
+
+      // Compare if there are actual changes before updating state
+      const hasChanges = updatedElementos.some((newEl, index) => newEl.total !== elementosSeleccionados[index].total)
+
+      if (hasChanges) {
+        setElementosSeleccionados(updatedElementos)
+      }
     }
   }, [filaCantidad, filaRendUnidad])
 
   // Función para calcular los porcentajes de incidencia
   useEffect(() => {
     if (elementosSeleccionados.length > 0 && totalCedula > 0) {
-      setElementosSeleccionados(
-        elementosSeleccionados.map((elemento) => {
+      const updatedElementos = elementosSeleccionados.map((elemento) => {
+        const newPorcentaje = elemento.costoGlobal
+          ? (elemento.costoGlobal / totalCedula) * 100
+          : ((elemento.precio * elemento.total) / totalCedula) * 100
+        if (Math.abs((elemento.porcentaje || 0) - newPorcentaje) > 0.01) {
           return {
             ...elemento,
-            porcentaje: (elemento.total / totalCedula) * 100,
+            porcentaje: newPorcentaje,
           }
-        }),
-      )
-    }
-  }, [elementosSeleccionados.length, totalCedula])
+        }
+        return elemento
+      })
 
-  // Modificar la función guardarCedula para incluir una redirección al detalle de la cédula
+      // Check if there are actual changes before updating state
+      const hasChanges = updatedElementos.some(
+        (newEl, index) => newEl.porcentaje !== elementosSeleccionados[index].porcentaje,
+      )
+
+      if (hasChanges) {
+        setElementosSeleccionados(updatedElementos)
+      }
+    }
+  }, [totalCedula])
+
+  // Añadir un useEffect para sincronizar filaTotal con totalCedula
+  useEffect(() => {
+    // Actualizar filaTotal para que sea igual al totalCedula
+    setFilaTotal(totalCedula)
+    // Actualizar filaPU para que sea igual al totalPU
+    setFilaPU(totalPU)
+  }, [totalCedula, totalPU])
+
+  // Modificar la función guardarCedula para manejar tanto creación como edición
   const guardarCedula = () => {
     try {
+      // Validar que haya un nombre
+      if (!nombreCedula.trim()) {
+        toast({
+          title: "Error",
+          description: "El nombre de la cédula es obligatorio.",
+          variant: "destructive",
+        })
+        return
+      }
+
       // Crear objeto de cédula
-      const cedulaId = Date.now().toString() // Generar un ID único basado en la fecha actual
+      const id = cedulaId || Date.now().toString() // Usar ID existente o generar uno nuevo
       const cedula: Cedula = {
-        id: cedulaId,
+        id: id,
         nombre: nombreCedula,
         fecha: new Date().toISOString(),
         elementos: elementosSeleccionados,
         total: totalCedula,
-        proyecto,
+        proyecto: proyectoId || undefined,
         cliente,
         ubicacion,
         responsable,
@@ -336,28 +426,62 @@ export function NuevaCedula({ proyectoId }: NuevaCedulaProps) {
 
       // Simular guardado exitoso
       setCedulaGuardada(true)
-      toast({
-        title: "Cédula guardada",
-        description: `La cédula "${nombreCedula}" ha sido guardada con éxito.`,
-      })
 
-      // Almacenar en localStorage para persistencia (solo para demostración)
+      // Guardar en localStorage
       if (typeof window !== "undefined") {
         const cedulasGuardadas = JSON.parse(localStorage.getItem("cedulas") || "[]")
-        cedulasGuardadas.push(cedula)
-        localStorage.setItem("cedulas", JSON.stringify(cedulasGuardadas))
 
-        // Si hay un proyectoId, redirigir a la página del proyecto
-        if (proyecto) {
-          setTimeout(() => {
-            router.push(`/proyectos/${proyecto}`)
-          }, 500)
+        if (cedulaId) {
+          // Actualizar cédula existente
+          const cedulasActualizadas = cedulasGuardadas.map((c: any) => (c.id === cedulaId ? cedula : c))
+          localStorage.setItem("cedulas", JSON.stringify(cedulasActualizadas))
+
+          toast({
+            title: "Cédula actualizada",
+            description: `La cédula "${nombreCedula}" ha sido actualizada con éxito.`,
+          })
         } else {
-          // Si no hay proyectoId, redirigir a la página de detalle de la cédula
-          setTimeout(() => {
-            router.push(`/cedulas/${cedulaId}`)
-          }, 500)
+          // Crear nueva cédula
+          cedulasGuardadas.push(cedula)
+          localStorage.setItem("cedulas", JSON.stringify(cedulasGuardadas))
+
+          toast({
+            title: "Cédula guardada",
+            description: `La cédula "${nombreCedula}" ha sido guardada con éxito.`,
+          })
+
+          // Si hay un rfId, asociar la cédula al RF
+          if (rfId) {
+            const resumenesGuardados = JSON.parse(localStorage.getItem("resumenesFinancieros") || "[]")
+            const resumenEncontrado = resumenesGuardados.find((r: any) => r.id === rfId)
+
+            if (resumenEncontrado) {
+              // Asociar la cédula al RF
+              resumenEncontrado.cedulasAsociadas = [...(resumenEncontrado.cedulasAsociadas || []), id]
+
+              // Actualizar el RF en localStorage
+              const resumenesActualizados = resumenesGuardados.map((r: any) => (r.id === rfId ? resumenEncontrado : r))
+              localStorage.setItem("resumenesFinancieros", JSON.stringify(resumenesActualizados))
+
+              // Redirigir al detalle del RF después de un breve retraso
+              setTimeout(() => {
+                router.push(`/proyectos/${proyectoId}/resumenes-financieros/${rfId}?nuevaCedula=${id}`)
+              }, 500)
+              return
+            }
+          }
         }
+
+        // Redirigir según el contexto
+        setTimeout(() => {
+          if (cedulaId) {
+            router.push(`/cedulas/${cedulaId}`)
+          } else if (proyectoId) {
+            router.push(`/proyectos/${proyectoId}`)
+          } else {
+            router.push(`/cedulas/${id}`)
+          }
+        }, 500)
       }
     } catch (error) {
       console.error("Error al guardar la cédula:", error)
@@ -683,7 +807,7 @@ export function NuevaCedula({ proyectoId }: NuevaCedulaProps) {
                   <th className="px-0.5 py-0 text-left text-[9px] font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider border-r border-gray-200 dark:border-zinc-700">
                     Unidad
                   </th>
-                  <th className="px-0.5 py-0 text-left text-[9px] font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider border-r border-gray-200 dark:border-zinc-700">
+                  <th className="px-0.5 py-0 text-left text-[9px] font-medium text-gray-300 uppercase tracking-wider border-r border-gray-200 dark:border-zinc-700">
                     Rend/Unidad
                   </th>
                   <th className="px-0.5 py-0 text-left text-[9px] font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider border-r border-gray-200 dark:border-zinc-700">
@@ -777,7 +901,7 @@ export function NuevaCedula({ proyectoId }: NuevaCedulaProps) {
                       />
                     </td>
                     <td className="px-0.5 py-0 whitespace-nowrap text-[10px] text-gray-500 dark:text-gray-300 border-r border-gray-200 dark:border-zinc-700">
-                      Q{elemento.precio * elemento.total}
+                      Q{elemento.costoGlobal?.toFixed(2) || (elemento.precio * elemento.total).toFixed(2)}
                     </td>
                     <td className="px-0.5 py-0 whitespace-nowrap text-[10px] text-gray-500 dark:text-gray-300 border-r border-gray-200 dark:border-zinc-700">
                       Q{elemento.costoUnidad?.toFixed(2) || (elemento.precio * (elemento.rendimiento || 1)).toFixed(2)}
@@ -794,14 +918,31 @@ export function NuevaCedula({ proyectoId }: NuevaCedulaProps) {
                 ))}
                 <tr className="bg-gray-50 dark:bg-zinc-700 h-4">
                   <td
-                    colSpan={12}
+                    colSpan={8}
                     className="px-0.5 py-0 text-right text-[10px] font-medium text-gray-900 dark:text-white border-r border-gray-200 dark:border-zinc-700"
                   >
                     Subtotal:
                   </td>
-                  <td className="px-0.5 py-0 text-[10px] font-bold text-gray-900 dark:text-white">
-                    Q{elementos.reduce((sum, elemento) => sum + elemento.total, 0).toFixed(2)}
+                  <td className="px-0.5 py-0 text-[10px] font-bold text-gray-900 dark:text-white border-r border-gray-200 dark:border-zinc-700">
+                    -
                   </td>
+                  <td className="px-0.5 py-0 text-[10px] font-bold text-gray-900 dark:text-white border-r border-gray-200 dark:border-zinc-700">
+                    Q
+                    {elementos
+                      .reduce((sum, elemento) => sum + (elemento.costoGlobal || elemento.precio * elemento.total), 0)
+                      .toFixed(2)}
+                  </td>
+                  <td className="px-0.5 py-0 text-[10px] font-bold text-gray-900 dark:text-white border-r border-gray-200 dark:border-zinc-700">
+                    Q
+                    {elementos
+                      .reduce(
+                        (sum, elemento) =>
+                          sum + (elemento.costoUnidad || elemento.precio * (elemento.rendimiento || 1)),
+                        0,
+                      )
+                      .toFixed(2)}
+                  </td>
+                  <td className="px-0.5 py-0 text-[10px] font-bold text-gray-900 dark:text-white">-</td>
                 </tr>
               </tbody>
             </table>
@@ -903,7 +1044,7 @@ export function NuevaCedula({ proyectoId }: NuevaCedulaProps) {
                     />
                   </td>
                   <td className="px-0.5 py-0 whitespace-nowrap text-[10px] text-gray-500 dark:text-gray-300 border-r border-gray-200 dark:border-zinc-700">
-                    Q{elemento.precio * elemento.total}
+                    Q{elemento.costoGlobal?.toFixed(2) || (elemento.precio * elemento.total).toFixed(2)}
                   </td>
                   <td className="px-0.5 py-0 whitespace-nowrap text-[10px] text-gray-500 dark:text-gray-300 border-r border-gray-200 dark:border-zinc-700">
                     Q{elemento.costoUnidad?.toFixed(2) || (elemento.precio * (elemento.rendimiento || 1)).toFixed(2)}
@@ -920,14 +1061,30 @@ export function NuevaCedula({ proyectoId }: NuevaCedulaProps) {
               ))}
               <tr className="bg-gray-50 dark:bg-zinc-700 h-4">
                 <td
-                  colSpan={10}
+                  colSpan={6}
                   className="px-0.5 py-0 text-right text-[10px] font-medium text-gray-900 dark:text-white border-r border-gray-200 dark:border-zinc-700"
                 >
                   Subtotal:
                 </td>
-                <td className="px-0.5 py-0 text-[10px] font-bold text-gray-900 dark:text-white">
-                  Q{elementos.reduce((sum, elemento) => sum + elemento.total, 0).toFixed(2)}
+                <td className="px-0.5 py-0 text-[10px] font-bold text-gray-900 dark:text-white border-r border-gray-200 dark:border-zinc-700">
+                  -
                 </td>
+                <td className="px-0.5 py-0 text-[10px] font-bold text-gray-900 dark:text-white border-r border-gray-200 dark:border-zinc-700">
+                  Q
+                  {elementos
+                    .reduce((sum, elemento) => sum + (elemento.costoGlobal || elemento.precio * elemento.total), 0)
+                    .toFixed(2)}
+                </td>
+                <td className="px-0.5 py-0 text-[10px] font-bold text-gray-900 dark:text-white border-r border-gray-200 dark:border-zinc-700">
+                  Q
+                  {elementos
+                    .reduce(
+                      (sum, elemento) => sum + (elemento.costoUnidad || elemento.precio * (elemento.rendimiento || 1)),
+                      0,
+                    )
+                    .toFixed(2)}
+                </td>
+                <td className="px-0.5 py-0 text-[10px] font-bold text-gray-900 dark:text-white">-</td>
               </tr>
             </tbody>
           </table>
@@ -986,7 +1143,7 @@ export function NuevaCedula({ proyectoId }: NuevaCedulaProps) {
 
           {/* Panel de totales sticky */}
           <div className="sticky top-0 z-50 bg-white dark:bg-[#0F0F12] border-b border-gray-200 dark:border-zinc-700 pb-2">
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-2">
+            <div className="grid grid-cols-1 md:grid-cols-5 gap-2">
               <div className="flex items-center bg-gray-100 dark:bg-zinc-700 p-2 rounded-md">
                 <Package className="h-4 w-4 text-blue-500 mr-2" />
                 <div className="flex flex-col">
@@ -1017,8 +1174,15 @@ export function NuevaCedula({ proyectoId }: NuevaCedulaProps) {
               <div className="flex items-center bg-gray-100 dark:bg-zinc-700 p-2 rounded-md">
                 <DollarSign className="h-4 w-4 text-green-500 mr-2" />
                 <div className="flex flex-col">
-                  <span className="text-[10px] text-gray-500 dark:text-gray-400">Total de la Cédula:</span>
+                  <span className="text-[10px] text-gray-500 dark:text-gray-400">Total:</span>
                   <span className="font-bold text-[11px] text-gray-900 dark:text-white">Q{totalCedula.toFixed(2)}</span>
+                </div>
+              </div>
+              <div className="flex items-center bg-gray-100 dark:bg-zinc-700 p-2 rounded-md">
+                <Calculator className="h-4 w-4 text-purple-500 mr-2" />
+                <div className="flex flex-col">
+                  <span className="text-[10px] text-gray-500 dark:text-gray-400">P/U:</span>
+                  <span className="font-bold text-[11px] text-gray-900 dark:text-white">Q{totalPU.toFixed(2)}</span>
                 </div>
               </div>
             </div>
@@ -1422,6 +1586,10 @@ export function NuevaCedula({ proyectoId }: NuevaCedulaProps) {
                       <div className="flex justify-between">
                         <span className="text-sm font-bold">TOTAL:</span>
                         <span className="text-sm font-bold">Q{totalCedula.toFixed(2)}</span>
+                      </div>
+                      <div className="flex justify-between mt-1">
+                        <span className="text-sm font-bold">P/U:</span>
+                        <span className="text-sm font-bold">Q{totalPU.toFixed(2)}</span>
                       </div>
                     </div>
                   </div>

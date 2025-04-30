@@ -79,25 +79,25 @@ export default function ProyectosPage() {
               <table className="w-full">
                 <thead>
                   <tr className="bg-gray-50 dark:bg-zinc-700">
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                    <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
                       ID
                     </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                    <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
                       Nombre
                     </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                    <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
                       Empresa
                     </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                    <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
                       Tipo
                     </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                    <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
                       Fecha
                     </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                    <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
                       Cédulas
                     </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                    <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
                       Acciones
                     </th>
                   </tr>
@@ -105,27 +105,27 @@ export default function ProyectosPage() {
                 <tbody className="bg-white dark:bg-zinc-800 divide-y divide-gray-200 dark:divide-zinc-700">
                   {proyectosFiltrados.map((proyecto) => (
                     <tr key={proyecto.id} className="hover:bg-gray-50 dark:hover:bg-zinc-700">
-                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-white">
+                      <td className="px-3 py-1.5 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-white">
                         {proyecto.id.substring(0, 8)}
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">
+                      <td className="px-3 py-1.5 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">
                         <div className="flex items-center">
                           {proyecto.esProyectoPrincipal ? (
-                            <Building className="h-4 w-4 mr-2 text-purple-500" />
+                            <Building className="h-3.5 w-3.5 mr-1.5 text-purple-500" />
                           ) : proyecto.tipo === "venta" ? (
-                            <DollarSign className="h-4 w-4 mr-2 text-green-500" />
+                            <DollarSign className="h-3.5 w-3.5 mr-1.5 text-green-500" />
                           ) : (
-                            <Building className="h-4 w-4 mr-2 text-blue-500" />
+                            <Building className="h-3.5 w-3.5 mr-1.5 text-blue-500" />
                           )}
                           {proyecto.nombre}
                         </div>
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">
+                      <td className="px-3 py-1.5 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">
                         {proyecto.empresa}
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">
+                      <td className="px-3 py-1.5 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">
                         <span
-                          className={`px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${
+                          className={`px-1.5 py-0.5 inline-flex text-xs leading-4 font-semibold rounded-full ${
                             proyecto.esProyectoPrincipal
                               ? "bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-400"
                               : proyecto.tipo === "venta"
@@ -140,21 +140,21 @@ export default function ProyectosPage() {
                               : "Presupuesto"}
                         </span>
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">
+                      <td className="px-3 py-1.5 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">
                         <div className="flex items-center">
-                          <Calendar className="h-4 w-4 mr-2 text-gray-400" />
+                          <Calendar className="h-3.5 w-3.5 mr-1.5 text-gray-400" />
                           {new Date(proyecto.fecha).toLocaleDateString()}
                         </div>
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">
+                      <td className="px-3 py-1.5 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">
                         <div className="flex items-center">
-                          <FileText className="h-4 w-4 mr-2 text-gray-400" />
+                          <FileText className="h-3.5 w-3.5 mr-1.5 text-gray-400" />
                           {proyecto.cedulas?.length || 0}
                         </div>
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                      <td className="px-3 py-1.5 whitespace-nowrap text-sm font-medium">
                         <Link href={`/proyectos/${proyecto.id}`}>
-                          <Button variant="ghost" size="sm" className="text-blue-600 dark:text-blue-400">
+                          <Button variant="ghost" size="xs" className="text-blue-600 dark:text-blue-400 h-6 px-2">
                             <Eye className="h-4 w-4 mr-1" />
                             Ver
                           </Button>

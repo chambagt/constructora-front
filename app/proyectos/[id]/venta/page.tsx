@@ -28,6 +28,26 @@ type Cedula = {
   total: number
 }
 
+// Tipo para el elemento detallado
+type ElementoDetallado = {
+  id: string
+  cedulaId: string
+  cedulaNombre: string
+  meta: string
+  renglon: string
+  actividad: string
+  unidad: string
+  cantidad: number
+  costoDirecto: number
+  porcentajeInp: number
+  montoInp: number
+  porcentajeFactInt: number
+  montoIndirUtilidad: number
+  total: number
+  precioUnitario: number
+  porcentaje: number
+}
+
 export default function ProyectoVentaPage() {
   const params = useParams()
   const router = useRouter()
@@ -40,6 +60,7 @@ export default function ProyectoVentaPage() {
   const [cedulasDisponibles, setCedulasDisponibles] = useState<Cedula[]>([])
   const [mostrarSeleccionCedulas, setMostrarSeleccionCedulas] = useState(false)
   const [busquedaCedula, setBusquedaCedula] = useState("")
+  const [elementosDetallados, setElementosDetallados] = useState<ElementoDetallado[]>([])
 
   // Cargar proyecto, RF y cédulas
   useEffect(() => {
@@ -63,6 +84,32 @@ export default function ProyectoVentaPage() {
         const cedulasDelRF = todasLasCedulas.filter((c: Cedula) => resumenEncontrado.cedulasAsociadas.includes(c.id))
         setCedulasAsociadas(cedulasDelRF)
         setResumenFinanciero(resumenEncontrado)
+
+        // Crear elementos detallados para cada cédula
+        const elementos: ElementoDetallado[] = []
+        cedulasDelRF.forEach((cedula: Cedula) => {
+          // Crear un elemento detallado para cada cédula
+          elementos.push({
+            id: `elem-${cedula.id}`,
+            cedulaId: cedula.id,
+            cedulaNombre: cedula.nombre,
+            meta: `Meta-${cedula.id.substring(0, 3)}`,
+            renglon: `R-${cedula.id.substring(0, 4)}`,
+            actividad: cedula.nombre || "Actividad de construcción",
+            unidad: "m²",
+            cantidad: 100,
+            costoDirecto: (cedula.total || 0) * 0.7,
+            porcentajeInp: 12,
+            montoInp: (cedula.total || 0) * 0.12,
+            porcentajeFactInt: 15,
+            montoIndirUtilidad: (cedula.total || 0) * 0.15,
+            total: cedula.total || 0,
+            precioUnitario: (cedula.total || 0) / 100,
+            porcentaje: 100,
+          })
+        })
+
+        setElementosDetallados(elementos)
 
         // Cédulas disponibles (no asociadas)
         const cedulasNoAsociadas = todasLasCedulas.filter(

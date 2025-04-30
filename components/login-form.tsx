@@ -45,6 +45,26 @@ export function LoginForm() {
 
   return (
     <div className="w-full max-w-md mx-auto space-y-6">
+      <div className="text-center space-y-4 mb-8">
+        {/* Logo */}
+        <div className="flex flex-col items-center justify-center">
+          <div className="mb-4">
+            <img src="/images/confya-logo.png" alt="Confya Constructora Logo" className="w-32 h-32 object-contain" />
+          </div>
+
+          {/* Nombre de la empresa */}
+          <div>
+            <h1 className="text-3xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-sky-300 to-blue-400">
+              CONFYA
+            </h1>
+            <h2 className="text-xl font-semibold text-gray-700 dark:text-gray-300">CONSTRUCTORA</h2>
+          </div>
+        </div>
+
+        {/* Eslogan */}
+        <p className="text-sm text-gray-500 dark:text-gray-400 italic">Construyendo confianza, edificando futuro</p>
+      </div>
+
       <h1 className="text-2xl font-bold text-center">Iniciar Sesión</h1>
       <Form {...form}>
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
@@ -79,11 +99,18 @@ export function LoginForm() {
               <AlertDescription>{error}</AlertDescription>
             </Alert>
           )}
-          <Button type="submit" className="w-full">
+          <Button type="submit" className="w-full bg-blue-500 hover:bg-blue-600">
             Iniciar Sesión
           </Button>
         </form>
       </Form>
+
+      {/* Footer con referencia a CGT */}
+      <div className="mt-8 pt-4 border-t border-gray-200 dark:border-gray-700 text-center">
+        <p className="text-xs text-gray-500 dark:text-gray-400">
+          Sistema desarrollado por <span className="font-semibold">CGT</span>
+        </p>
+      </div>
     </div>
   )
 }

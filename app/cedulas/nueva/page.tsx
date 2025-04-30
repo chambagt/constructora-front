@@ -12,17 +12,24 @@ export default function NuevaCedulaPage() {
 
   // Extraer parámetros de la URL
   const proyectoId = searchParams.get("proyectoId")
+  const rfId = searchParams.get("rfId")
+  const tipo = searchParams.get("tipo")
 
   // Estado para controlar si se ha cargado la página
   const [isLoaded, setIsLoaded] = useState(false)
 
   useEffect(() => {
-    setIsLoaded(true)
-  }, [])
+    // Only set isLoaded once when the component mounts
+    if (!isLoaded) {
+      setIsLoaded(true)
+    }
+  }, [isLoaded])
 
   // Función para volver a la página anterior
   const handleBack = () => {
-    if (proyectoId) {
+    if (rfId && proyectoId) {
+      router.push(`/proyectos/${proyectoId}/resumenes-financieros/${rfId}`)
+    } else if (proyectoId) {
       router.push(`/proyectos/${proyectoId}`)
     } else {
       router.push("/cedulas")
@@ -43,7 +50,7 @@ export default function NuevaCedulaPage() {
         <h1 className="text-2xl font-bold">Nueva Cédula</h1>
       </div>
 
-      <NuevaCedula proyectoId={proyectoId} />
+      <NuevaCedula proyectoId={proyectoId} rfId={rfId} tipo={tipo} />
     </div>
   )
 }
