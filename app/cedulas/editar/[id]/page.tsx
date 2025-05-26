@@ -6,7 +6,7 @@ import { useToast } from "@/hooks/use-toast"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
 import { ArrowLeft } from "lucide-react"
-import { NuevaCedula } from "@/components/kokonutui/nueva-cedula"
+import { NuevaCedula } from "@/components/nueva-cedula"
 
 interface Params {
   id: string

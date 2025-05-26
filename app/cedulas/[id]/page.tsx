@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react"
 import { useParams, useRouter } from "next/navigation"
-import { DetalleCedula } from "@/components/kokonutui/detalle-cedula"
+import { DetalleCedula } from "@/components/detalle-cedula"
 import { useToast } from "@/hooks/use-toast"
 
 export default function DetalleCedulaPage() {

@@ -1,7 +1,7 @@
 "use client"
 
 import { useState } from "react"
-import { AgregarManoObraForm } from "@/components/kokonutui/agregar-mano-obra-form"
+import { AgregarManoObraForm } from "@/components/agregar-mano-obra-form"
 import { Button } from "@/components/ui/button"
 import { HardHat } from "lucide-react"
 

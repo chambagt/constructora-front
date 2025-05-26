@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { ArrowLeft, DollarSign, Save } from "lucide-react"
-import type { Proyecto } from "@/components/kokonutui/nuevo-proyecto-form"
+import type { Proyecto } from "@/components/nuevo-proyecto-form"
 
 // Tipo para el Resumen Financiero
 type ResumenFinanciero = {

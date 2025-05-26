@@ -1,4 +1,4 @@
-import { Settings } from "@/components/kokonutui/settings"
+import { Settings } from "@/components/settings"
 
 export default function ConfiguracionesPage() {
   return (

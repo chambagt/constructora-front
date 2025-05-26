@@ -1,4 +1,4 @@
-import { AgregarEmpleadoForm } from "@/components/kokonutui/agregar-empleado-form"
+import { AgregarEmpleadoForm } from "@/components/agregar-empleado-form"
 
 export default function EquipoPage() {
   return (

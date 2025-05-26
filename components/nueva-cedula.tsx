@@ -64,7 +64,7 @@ type ElementoCedula = {
   precio: number
   cantidad: number
   total: number
-  rendimiento?: number
+  rendimiento?: number | null
   costoGlobal?: number
   costoUnidad?: number
   porcentaje?: number
@@ -219,6 +219,14 @@ interface NuevaCedulaProps {
   cedulaId?: string | null
 }
 
+// Función para formatear moneda en Quetzales
+const formatQuetzales = (value: number): string => {
+  return `Q${value.toLocaleString("es-GT", {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  })}`
+}
+
 export function NuevaCedula({ proyectoId, rfId, tipo, cedulaId }: NuevaCedulaProps) {
   const { toast } = useToast()
   const router = useRouter()
@@ -328,27 +336,121 @@ export function NuevaCedula({ proyectoId, rfId, tipo, cedulaId }: NuevaCedulaPro
   const indirectos = subtotalCedula * factorIndirectos
   const utilidad = subtotalCedula * factorUtilidad
 
-  // Actualizar totales de materiales cuando cambie filaCantidad
+  // Modificar la función actualizarRendimiento para manejar correctamente la Mano de Obra y Equipamiento
+  const actualizarRendimiento = (id: string, rendimiento: number | null) => {
+    setElementosSeleccionados(
+      elementosSeleccionados.map((elemento) => {
+        if (elemento.id === id) {
+          // Permitir valores nulos o vacíos
+          const nuevoRendimiento = rendimiento === null || isNaN(rendimiento) ? null : Math.max(0, rendimiento)
+          // Usar filaCantidad para el cálculo para todos los tipos de elementos
+          const cantidad =
+            elemento.familia === "MT" || elemento.familia === "MO" || elemento.familia === "EQ"
+              ? filaCantidad
+              : elemento.cantidad
+          // Si el rendimiento es nulo, establecer valores derivados como nulos también
+          const totalInsumos = nuevoRendimiento !== null ? nuevoRendimiento * cantidad : 0
+          const costoGlobal = nuevoRendimiento !== null ? elemento.precio * totalInsumos : 0
+          const costoUnidad = nuevoRendimiento !== null ? elemento.precio * nuevoRendimiento : 0
+          return {
+            ...elemento,
+            rendimiento: nuevoRendimiento,
+            total: totalInsumos,
+            costoGlobal: costoGlobal,
+            costoUnidad: costoUnidad,
+          }
+        }
+        return elemento
+      }),
+    )
+  }
+
+  // Modificar la función actualizarPrecio para manejar correctamente la Mano de Obra y Equipamiento
+  const actualizarPrecio = (id: string, precio: number) => {
+    setElementosSeleccionados(
+      elementosSeleccionados.map((elemento) => {
+        if (elemento.id === id) {
+          const nuevoPrecio = Math.max(0, precio)
+          const rendimiento = elemento.rendimiento || 1
+          // Usar filaCantidad para el cálculo para todos los tipos de elementos
+          const cantidad =
+            elemento.familia === "MT" || elemento.familia === "MO" || elemento.familia === "EQ"
+              ? filaCantidad
+              : elemento.cantidad
+          const totalInsumos = rendimiento * cantidad
+          const costoGlobal = nuevoPrecio * totalInsumos
+          const costoUnidad = nuevoPrecio * rendimiento
+          return {
+            ...elemento,
+            precio: nuevoPrecio,
+            total: totalInsumos,
+            costoGlobal: costoGlobal,
+            costoUnidad: costoUnidad,
+          }
+        }
+        return elemento
+      }),
+    )
+  }
+
+  // Modificar la función actualizarCantidad para manejar correctamente la Mano de Obra y Equipamiento
+  const actualizarCantidad = (id: string, cantidad: number) => {
+    setElementosSeleccionados(
+      elementosSeleccionados.map((elemento) => {
+        if (elemento.id === id) {
+          const nuevaCantidad = Math.max(0, cantidad)
+          const rendimiento = elemento.rendimiento || 1
+          // Para todos los tipos de elementos, usar filaCantidad para el cálculo
+          const totalInsumos =
+            elemento.familia === "MT" || elemento.familia === "MO" || elemento.familia === "EQ"
+              ? rendimiento * filaCantidad
+              : rendimiento * nuevaCantidad
+          const costoGlobal = elemento.precio * totalInsumos
+          const costoUnidad = elemento.precio * rendimiento
+          return {
+            ...elemento,
+            cantidad: nuevaCantidad,
+            total: totalInsumos,
+            costoGlobal: costoGlobal,
+            costoUnidad: costoUnidad,
+          }
+        }
+        return elemento
+      }),
+    )
+  }
+
+  // Asegurar que el useEffect actualice correctamente todos los elementos cuando cambia filaCantidad o filaRendUnidad
   useEffect(() => {
     if (elementosSeleccionados.length > 0) {
+      console.log("Actualizando elementos con filaCantidad:", filaCantidad, "filaRendUnidad:", filaRendUnidad)
       const updatedElementos = elementosSeleccionados.map((elemento) => {
-        if (elemento.familia === "MT") {
-          // Multiplicar solo por rendimiento/unidad * cantidad
-          const nuevoTotal = filaRendUnidad * filaCantidad
+        // Aplicar a MT, MO y EQ
+        if (elemento.familia === "MT" || elemento.familia === "MO" || elemento.familia === "EQ") {
+          const rendimiento = elemento.rendimiento !== null ? elemento.rendimiento : filaRendUnidad
+          // Si el rendimiento es nulo, establecer valores derivados como 0
+          const nuevoTotal = rendimiento !== null ? rendimiento * filaCantidad : 0
+          const costoGlobal = rendimiento !== null ? elemento.precio * nuevoTotal : 0
+          const costoUnidad = rendimiento !== null ? elemento.precio * rendimiento : 0
+
+          console.log(`Actualizando ${elemento.familia} ${elemento.codigo}:`, {
+            rendimiento,
+            nuevoTotal,
+            costoGlobal,
+            costoUnidad,
+          })
+
           return {
             ...elemento,
             total: nuevoTotal,
+            costoGlobal: costoGlobal,
+            costoUnidad: costoUnidad,
           }
         }
         return elemento
       })
 
-      // Compare if there are actual changes before updating state
-      const hasChanges = updatedElementos.some((newEl, index) => newEl.total !== elementosSeleccionados[index].total)
-
-      if (hasChanges) {
-        setElementosSeleccionados(updatedElementos)
-      }
+      setElementosSeleccionados(updatedElementos)
     }
   }, [filaCantidad, filaRendUnidad])
 
@@ -532,9 +634,9 @@ export function NuevaCedula({ proyectoId, rfId, tipo, cedulaId }: NuevaCedulaPro
       if (elemento) {
         const rendimiento = filaRendUnidad
         // Usar solo rendimiento/unidad * cantidad para el cálculo
-        const totalInsumos = rendimiento * filaCantidad
-        const costoGlobal = elemento.precio * totalInsumos
-        const costoUnidad = elemento.precio * rendimiento
+        const totalInsumos = rendimiento !== null ? rendimiento * filaCantidad : 0
+        const costoGlobal = rendimiento !== null ? elemento.precio * totalInsumos : 0
+        const costoUnidad = rendimiento !== null ? elemento.precio * rendimiento : 0
         const nuevoElemento: ElementoCedula = {
           id: elemento.id,
           codigo: elemento.codigo,
@@ -556,10 +658,10 @@ export function NuevaCedula({ proyectoId, rfId, tipo, cedulaId }: NuevaCedulaPro
     } else if (tipo === "MO") {
       elemento = manoObraEjemplo.find((m) => m.id === id)
       if (elemento) {
-        const rendimiento = 1
-        const totalInsumos = rendimiento * 1 // Cantidad 1 por defecto
-        const costoGlobal = elemento.precio * totalInsumos
-        const costoUnidad = elemento.precio * rendimiento
+        const rendimiento = filaRendUnidad
+        const totalInsumos = rendimiento !== null ? rendimiento * filaCantidad : 0
+        const costoGlobal = rendimiento !== null ? elemento.precio * totalInsumos : 0
+        const costoUnidad = rendimiento !== null ? elemento.precio * rendimiento : 0
         const nuevoElemento: ElementoCedula = {
           id: elemento.id,
           codigo: elemento.codigo,
@@ -581,10 +683,10 @@ export function NuevaCedula({ proyectoId, rfId, tipo, cedulaId }: NuevaCedulaPro
     } else if (tipo === "EQ") {
       elemento = equiposEjemplo.find((e) => e.id === id)
       if (elemento) {
-        const rendimiento = 1
-        const totalInsumos = rendimiento * 1 // Cantidad 1 por defecto
-        const costoGlobal = elemento.precio * totalInsumos
-        const costoUnidad = elemento.precio * rendimiento
+        const rendimiento = filaRendUnidad
+        const totalInsumos = rendimiento !== null ? rendimiento * filaCantidad : 0
+        const costoGlobal = rendimiento !== null ? elemento.precio * totalInsumos : 0
+        const costoUnidad = rendimiento !== null ? elemento.precio * rendimiento : 0
         const nuevoElemento: ElementoCedula = {
           id: elemento.id,
           codigo: elemento.codigo,
@@ -607,54 +709,6 @@ export function NuevaCedula({ proyectoId, rfId, tipo, cedulaId }: NuevaCedulaPro
       // Limpiar búsqueda después de agregar
       setBusquedaEQ("")
     }
-  }
-
-  // Función para actualizar la cantidad de un elemento
-  const actualizarCantidad = (id: string, cantidad: number) => {
-    setElementosSeleccionados(
-      elementosSeleccionados.map((elemento) => {
-        if (elemento.id === id) {
-          const nuevaCantidad = Math.max(0, cantidad)
-          const rendimiento = elemento.rendimiento || 1
-          const totalInsumos = rendimiento * nuevaCantidad
-          const costoGlobal = elemento.precio * totalInsumos
-          const costoUnidad = elemento.precio * rendimiento
-          return {
-            ...elemento,
-            cantidad: nuevaCantidad,
-            total: totalInsumos,
-            costoGlobal: costoGlobal,
-            costoUnidad: costoUnidad,
-          }
-        }
-        return elemento
-      }),
-    )
-  }
-
-  // Función para actualizar el precio de un elemento
-  const actualizarPrecio = (id: string, precio: number) => {
-    setElementosSeleccionados(
-      elementosSeleccionados.map((elemento) => {
-        if (elemento.id === id) {
-          const nuevoPrecio = Math.max(0, precio)
-          const rendimiento = elemento.rendimiento || 1
-          // Si es un material, usar filaCantidad para el cálculo
-          const cantidad = elemento.familia === "MT" ? filaCantidad : elemento.cantidad
-          const totalInsumos = rendimiento * cantidad
-          const costoGlobal = nuevoPrecio * totalInsumos
-          const costoUnidad = nuevoPrecio * rendimiento
-          return {
-            ...elemento,
-            precio: nuevoPrecio,
-            total: totalInsumos,
-            costoGlobal: costoGlobal,
-            costoUnidad: costoUnidad,
-          }
-        }
-        return elemento
-      }),
-    )
   }
 
   // Función para actualizar la unidad de un elemento
@@ -680,30 +734,6 @@ export function NuevaCedula({ proyectoId, rfId, tipo, cedulaId }: NuevaCedulaPro
           return {
             ...elemento,
             descripcion: descripcion,
-          }
-        }
-        return elemento
-      }),
-    )
-  }
-
-  // Función para actualizar el rendimiento de un elemento
-  const actualizarRendimiento = (id: string, rendimiento: number) => {
-    setElementosSeleccionados(
-      elementosSeleccionados.map((elemento) => {
-        if (elemento.id === id) {
-          const nuevoRendimiento = Math.max(0.01, rendimiento)
-          // Si es un material, usar filaCantidad para el cálculo
-          const cantidad = elemento.familia === "MT" ? filaCantidad : elemento.cantidad
-          const totalInsumos = nuevoRendimiento * cantidad
-          const costoGlobal = elemento.precio * totalInsumos
-          const costoUnidad = elemento.precio * nuevoRendimiento
-          return {
-            ...elemento,
-            rendimiento: nuevoRendimiento,
-            total: totalInsumos,
-            costoGlobal: costoGlobal,
-            costoUnidad: costoUnidad,
           }
         }
         return elemento
@@ -880,10 +910,13 @@ export function NuevaCedula({ proyectoId, rfId, tipo, cedulaId }: NuevaCedulaPro
                     <td className="px-0.5 py-0 whitespace-nowrap text-[10px] text-gray-500 dark:text-gray-300 border-r border-gray-200 dark:border-zinc-700">
                       <Input
                         type="number"
-                        min="0.01"
+                        min="0"
                         step="0.01"
-                        value={elemento.rendimiento || 1}
-                        onChange={(e) => actualizarRendimiento(elemento.id, Number.parseFloat(e.target.value) || 1)}
+                        value={elemento.rendimiento === null ? "" : elemento.rendimiento}
+                        onChange={(e) => {
+                          const value = e.target.value
+                          actualizarRendimiento(elemento.id, value === "" ? null : Number.parseFloat(value))
+                        }}
                         className="w-12 h-4 text-[10px] px-0.5 py-0 leading-none"
                       />
                     </td>
@@ -901,10 +934,10 @@ export function NuevaCedula({ proyectoId, rfId, tipo, cedulaId }: NuevaCedulaPro
                       />
                     </td>
                     <td className="px-0.5 py-0 whitespace-nowrap text-[10px] text-gray-500 dark:text-gray-300 border-r border-gray-200 dark:border-zinc-700">
-                      Q{elemento.costoGlobal?.toFixed(2) || (elemento.precio * elemento.total).toFixed(2)}
+                      {formatQuetzales(elemento.costoGlobal || elemento.precio * elemento.total)}
                     </td>
                     <td className="px-0.5 py-0 whitespace-nowrap text-[10px] text-gray-500 dark:text-gray-300 border-r border-gray-200 dark:border-zinc-700">
-                      Q{elemento.costoUnidad?.toFixed(2) || (elemento.precio * (elemento.rendimiento || 1)).toFixed(2)}
+                      {formatQuetzales(elemento.costoUnidad || elemento.precio * (elemento.rendimiento || 1))}
                     </td>
                     <td className="px-0.5 py-0 whitespace-nowrap text-[10px] text-gray-500 dark:text-gray-300 border-r border-gray-200 dark:border-zinc-700">
                       {elemento.porcentaje?.toFixed(2) || "0.00"}%
@@ -927,20 +960,21 @@ export function NuevaCedula({ proyectoId, rfId, tipo, cedulaId }: NuevaCedulaPro
                     -
                   </td>
                   <td className="px-0.5 py-0 text-[10px] font-bold text-gray-900 dark:text-white border-r border-gray-200 dark:border-zinc-700">
-                    Q
-                    {elementos
-                      .reduce((sum, elemento) => sum + (elemento.costoGlobal || elemento.precio * elemento.total), 0)
-                      .toFixed(2)}
+                    {formatQuetzales(
+                      elementos.reduce(
+                        (sum, elemento) => sum + (elemento.costoGlobal || elemento.precio * elemento.total),
+                        0,
+                      ),
+                    )}
                   </td>
                   <td className="px-0.5 py-0 text-[10px] font-bold text-gray-900 dark:text-white border-r border-gray-200 dark:border-zinc-700">
-                    Q
-                    {elementos
-                      .reduce(
+                    {formatQuetzales(
+                      elementos.reduce(
                         (sum, elemento) =>
                           sum + (elemento.costoUnidad || elemento.precio * (elemento.rendimiento || 1)),
                         0,
-                      )
-                      .toFixed(2)}
+                      ),
+                    )}
                   </td>
                   <td className="px-0.5 py-0 text-[10px] font-bold text-gray-900 dark:text-white">-</td>
                 </tr>
@@ -1023,10 +1057,13 @@ export function NuevaCedula({ proyectoId, rfId, tipo, cedulaId }: NuevaCedulaPro
                   <td className="px-0.5 py-0 whitespace-nowrap text-[10px] text-gray-500 dark:text-gray-300 border-r border-gray-200 dark:border-zinc-700">
                     <Input
                       type="number"
-                      min="0.01"
+                      min="0"
                       step="0.01"
-                      value={elemento.rendimiento || 1}
-                      onChange={(e) => actualizarRendimiento(elemento.id, Number.parseFloat(e.target.value) || 1)}
+                      value={elemento.rendimiento === null ? "" : elemento.rendimiento}
+                      onChange={(e) => {
+                        const value = e.target.value
+                        actualizarRendimiento(elemento.id, value === "" ? null : Number.parseFloat(value))
+                      }}
                       className="w-12 h-4 text-[10px] px-0.5 py-0 leading-none"
                     />
                   </td>
@@ -1044,10 +1081,10 @@ export function NuevaCedula({ proyectoId, rfId, tipo, cedulaId }: NuevaCedulaPro
                     />
                   </td>
                   <td className="px-0.5 py-0 whitespace-nowrap text-[10px] text-gray-500 dark:text-gray-300 border-r border-gray-200 dark:border-zinc-700">
-                    Q{elemento.costoGlobal?.toFixed(2) || (elemento.precio * elemento.total).toFixed(2)}
+                    {formatQuetzales(elemento.costoGlobal || elemento.precio * elemento.total)}
                   </td>
                   <td className="px-0.5 py-0 whitespace-nowrap text-[10px] text-gray-500 dark:text-gray-300 border-r border-gray-200 dark:border-zinc-700">
-                    Q{elemento.costoUnidad?.toFixed(2) || (elemento.precio * (elemento.rendimiento || 1)).toFixed(2)}
+                    {formatQuetzales(elemento.costoUnidad || elemento.precio * (elemento.rendimiento || 1))}
                   </td>
                   <td className="px-0.5 py-0 whitespace-nowrap text-[10px] text-gray-500 dark:text-gray-300 border-r border-gray-200 dark:border-zinc-700">
                     {elemento.porcentaje?.toFixed(2) || "0.00"}%
@@ -1070,19 +1107,20 @@ export function NuevaCedula({ proyectoId, rfId, tipo, cedulaId }: NuevaCedulaPro
                   -
                 </td>
                 <td className="px-0.5 py-0 text-[10px] font-bold text-gray-900 dark:text-white border-r border-gray-200 dark:border-zinc-700">
-                  Q
-                  {elementos
-                    .reduce((sum, elemento) => sum + (elemento.costoGlobal || elemento.precio * elemento.total), 0)
-                    .toFixed(2)}
+                  {formatQuetzales(
+                    elementos.reduce(
+                      (sum, elemento) => sum + (elemento.costoGlobal || elemento.precio * elemento.total),
+                      0,
+                    ),
+                  )}
                 </td>
                 <td className="px-0.5 py-0 text-[10px] font-bold text-gray-900 dark:text-white border-r border-gray-200 dark:border-zinc-700">
-                  Q
-                  {elementos
-                    .reduce(
+                  {formatQuetzales(
+                    elementos.reduce(
                       (sum, elemento) => sum + (elemento.costoUnidad || elemento.precio * (elemento.rendimiento || 1)),
                       0,
-                    )
-                    .toFixed(2)}
+                    ),
+                  )}
                 </td>
                 <td className="px-0.5 py-0 text-[10px] font-bold text-gray-900 dark:text-white">-</td>
               </tr>
@@ -1149,7 +1187,7 @@ export function NuevaCedula({ proyectoId, rfId, tipo, cedulaId }: NuevaCedulaPro
                 <div className="flex flex-col">
                   <span className="text-[10px] text-gray-500 dark:text-gray-400">Materiales:</span>
                   <span className="font-medium text-[11px] text-gray-900 dark:text-white">
-                    Q{totalMateriales.toFixed(2)}
+                    {formatQuetzales(totalMateriales)}
                   </span>
                 </div>
               </div>
@@ -1158,7 +1196,7 @@ export function NuevaCedula({ proyectoId, rfId, tipo, cedulaId }: NuevaCedulaPro
                 <div className="flex flex-col">
                   <span className="text-[10px] text-gray-500 dark:text-gray-400">Mano de Obra:</span>
                   <span className="font-medium text-[11px] text-gray-900 dark:text-white">
-                    Q{totalManoObra.toFixed(2)}
+                    {formatQuetzales(totalManoObra)}
                   </span>
                 </div>
               </div>
@@ -1167,7 +1205,7 @@ export function NuevaCedula({ proyectoId, rfId, tipo, cedulaId }: NuevaCedulaPro
                 <div className="flex flex-col">
                   <span className="text-[10px] text-gray-500 dark:text-gray-400">Equipamiento:</span>
                   <span className="font-medium text-[11px] text-gray-900 dark:text-white">
-                    Q{totalEquipos.toFixed(2)}
+                    {formatQuetzales(totalEquipos)}
                   </span>
                 </div>
               </div>
@@ -1175,14 +1213,18 @@ export function NuevaCedula({ proyectoId, rfId, tipo, cedulaId }: NuevaCedulaPro
                 <DollarSign className="h-4 w-4 text-green-500 mr-2" />
                 <div className="flex flex-col">
                   <span className="text-[10px] text-gray-500 dark:text-gray-400">Total:</span>
-                  <span className="font-bold text-[11px] text-gray-900 dark:text-white">Q{totalCedula.toFixed(2)}</span>
+                  <span className="font-bold text-[11px] text-gray-900 dark:text-white">
+                    {formatQuetzales(totalCedula)}
+                  </span>
                 </div>
               </div>
               <div className="flex items-center bg-gray-100 dark:bg-zinc-700 p-2 rounded-md">
                 <Calculator className="h-4 w-4 text-purple-500 mr-2" />
                 <div className="flex flex-col">
                   <span className="text-[10px] text-gray-500 dark:text-gray-400">P/U:</span>
-                  <span className="font-bold text-[11px] text-gray-900 dark:text-white">Q{totalPU.toFixed(2)}</span>
+                  <span className="font-bold text-[11px] text-gray-900 dark:text-white">
+                    {formatQuetzales(totalPU)}
+                  </span>
                 </div>
               </div>
             </div>
@@ -1562,34 +1604,34 @@ export function NuevaCedula({ proyectoId, rfId, tipo, cedulaId }: NuevaCedulaPro
                   <div className="space-y-2">
                     <div className="flex justify-between">
                       <span className="text-sm text-gray-600 dark:text-gray-400">Subtotal:</span>
-                      <span className="text-sm font-medium">Q{subtotalCedula.toFixed(2)}</span>
+                      <span className="text-sm font-medium">{formatQuetzales(subtotalCedula)}</span>
                     </div>
                     <div className="flex justify-between">
                       <span className="text-sm text-gray-600 dark:text-gray-400">
                         Impuestos ({(factorImpuestos * 100).toFixed(1)}%):
                       </span>
-                      <span className="text-sm font-medium">Q{impuestos.toFixed(2)}</span>
+                      <span className="text-sm font-medium">{formatQuetzales(impuestos)}</span>
                     </div>
                     <div className="flex justify-between">
                       <span className="text-sm text-gray-600 dark:text-gray-400">
                         Indirectos ({(factorIndirectos * 100).toFixed(1)}%):
                       </span>
-                      <span className="text-sm font-medium">Q{indirectos.toFixed(2)}</span>
+                      <span className="text-sm font-medium">{formatQuetzales(indirectos)}</span>
                     </div>
                     <div className="flex justify-between">
                       <span className="text-sm text-gray-600 dark:text-gray-400">
                         Utilidad ({(factorUtilidad * 100).toFixed(1)}%):
                       </span>
-                      <span className="text-sm font-medium">Q{utilidad.toFixed(2)}</span>
+                      <span className="text-sm font-medium">{formatQuetzales(utilidad)}</span>
                     </div>
                     <div className="pt-2 mt-2 border-t border-gray-200 dark:border-gray-700">
                       <div className="flex justify-between">
                         <span className="text-sm font-bold">TOTAL:</span>
-                        <span className="text-sm font-bold">Q{totalCedula.toFixed(2)}</span>
+                        <span className="text-sm font-bold">{formatQuetzales(totalCedula)}</span>
                       </div>
                       <div className="flex justify-between mt-1">
                         <span className="text-sm font-bold">P/U:</span>
-                        <span className="text-sm font-bold">Q{totalPU.toFixed(2)}</span>
+                        <span className="text-sm font-bold">{formatQuetzales(totalPU)}</span>
                       </div>
                     </div>
                   </div>

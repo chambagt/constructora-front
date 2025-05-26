@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { PlusCircle, DollarSign, Calendar, FileText, Eye } from "lucide-react"
-import { NuevoProyectoForm, type Proyecto } from "@/components/kokonutui/nuevo-proyecto-form"
+import { NuevoProyectoForm, type Proyecto } from "@/components/nuevo-proyecto-form"
 import Link from "next/link"
 
 export default function ProyectosVentaPage() {

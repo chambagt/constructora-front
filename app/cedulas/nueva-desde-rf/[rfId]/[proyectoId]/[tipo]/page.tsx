@@ -1,7 +1,7 @@
 "use client"
 
 import { useParams } from "next/navigation"
-import { NuevaCedula } from "@/components/kokonutui/nueva-cedula"
+import { NuevaCedula } from "@/components/nueva-cedula"
 
 export default function NuevaCedulaDesdePage() {
   const params = useParams()

@@ -6,7 +6,7 @@ import { useEffect, useState } from "react"
 import { Inter } from "next/font/google"
 import "./globals.css"
 import { ThemeProvider } from "@/components/theme-provider"
-import Sidebar from "@/components/kokonutui/sidebar"
+import Sidebar from "@/components/sidebar"
 import { useRouter } from "next/navigation"
 
 const inter = Inter({ subsets: ["latin"] })

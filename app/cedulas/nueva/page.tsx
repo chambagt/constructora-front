@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
-import { NuevaCedula } from "@/components/kokonutui/nueva-cedula"
+import { NuevaCedula } from "@/components/nueva-cedula"
 import { Button } from "@/components/ui/button"
 import { ArrowLeft } from "lucide-react"
 

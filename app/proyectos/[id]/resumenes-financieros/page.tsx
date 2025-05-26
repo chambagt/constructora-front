@@ -4,7 +4,7 @@ import { useState, useEffect } from "react"
 import { useParams, useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { ArrowLeft, Eye, Trash2 } from "lucide-react"
-import type { Proyecto } from "@/components/kokonutui/nuevo-proyecto-form"
+import type { Proyecto } from "@/components/nuevo-proyecto-form"
 import { useToast } from "@/hooks/use-toast"
 
 // Tipo para el Resumen Financiero
@@ -32,59 +32,91 @@ export default function ResumenesFinancierosPage() {
 
   const [proyecto, setProyecto] = useState<Proyecto | null>(null)
   const [resumenesFinancieros, setResumenesFinancieros] = useState<ResumenFinanciero[]>([])
-  const [tipoActivo, setTipoActivo] = useState<"presupuesto" | "venta">("presupuesto")
+  const [isLoading, setIsLoading] = useState(true)
+  const [dataLoaded, setDataLoaded] = useState(false)
 
-  // Cargar proyecto y resúmenes financieros
+  // Cargar proyecto y resúmenes financieros - solo una vez al montar el componente
   useEffect(() => {
-    if (typeof window !== "undefined" && proyectoId) {
-      // Cargar proyecto
-      const proyectosGuardados = JSON.parse(localStorage.getItem("proyectos") || "[]")
-      const proyectoEncontrado = proyectosGuardados.find((p: Proyecto) => p.id === proyectoId)
-      setProyecto(proyectoEncontrado || null)
+    // Skip if already loaded
+    if (dataLoaded) return
 
-      // Cargar resúmenes financieros
-      const resumenesGuardados = JSON.parse(localStorage.getItem("resumenesFinancieros") || "[]")
-      const resumenesFiltrados = resumenesGuardados.filter((r: ResumenFinanciero) => r.proyectoId === proyectoId)
-      setResumenesFinancieros(resumenesFiltrados)
+    const loadData = () => {
+      try {
+        if (typeof window === "undefined") return
+
+        setIsLoading(true)
+
+        // Cargar proyecto
+        const proyectosGuardados = JSON.parse(localStorage.getItem("proyectos") || "[]")
+        const proyectoEncontrado = proyectosGuardados.find((p: Proyecto) => p.id === proyectoId)
+
+        // Cargar resúmenes financieros (solo de tipo presupuesto)
+        const resumenesGuardados = JSON.parse(localStorage.getItem("resumenesFinancieros") || "[]")
+        const resumenesFiltrados = resumenesGuardados.filter(
+          (r: ResumenFinanciero) => r.proyectoId === proyectoId && r.tipo === "presupuesto",
+        )
+
+        setProyecto(proyectoEncontrado || null)
+        setResumenesFinancieros(resumenesFiltrados)
+        setDataLoaded(true)
+      } catch (error) {
+        console.error("Error al cargar datos:", error)
+        toast({
+          title: "Error",
+          description: "Hubo un problema al cargar los datos. Inténtalo de nuevo.",
+          variant: "destructive",
+        })
+      } finally {
+        setIsLoading(false)
+      }
     }
-  }, [proyectoId])
+
+    loadData()
+  }, [proyectoId, toast, dataLoaded])
 
   // Crear nuevo RF
-  const crearNuevoRF = (tipo: "presupuesto" | "venta") => {
+  const crearNuevoRF = () => {
     if (!proyecto) return
 
-    const nuevoRF: ResumenFinanciero = {
-      id: `rf-${Date.now()}`,
-      proyectoId,
-      tipo,
-      nombre: `${tipo === "presupuesto" ? "Presupuesto" : "Venta"} - ${proyecto.nombre}`,
-      descripcion: "",
-      costoDirecto: 0,
-      costoIndirecto: 0,
-      utilidad: 0,
-      impuestos: 0,
-      total: 0,
-      notas: "",
-      fecha: new Date().toISOString(),
-      cedulasAsociadas: [],
+    try {
+      // Siempre creamos un resumen de tipo presupuesto
+      const nuevoRF: ResumenFinanciero = {
+        id: `rf-${Date.now()}`,
+        proyectoId,
+        tipo: "presupuesto", // Siempre será de tipo presupuesto
+        nombre: `Presupuesto - ${proyecto.nombre}`,
+        descripcion: "",
+        costoDirecto: 0,
+        costoIndirecto: 0,
+        utilidad: 0,
+        impuestos: 0,
+        total: 0,
+        notas: "",
+        fecha: new Date().toISOString(),
+        cedulasAsociadas: [],
+      }
+
+      // Guardar en localStorage
+      if (typeof window !== "undefined") {
+        const resumenesGuardados = JSON.parse(localStorage.getItem("resumenesFinancieros") || "[]")
+        localStorage.setItem("resumenesFinancieros", JSON.stringify([...resumenesGuardados, nuevoRF]))
+      }
+
+      // Redirigir a la página de detalle del RF
+      router.push(`/proyectos/${proyectoId}/resumenes-financieros/${nuevoRF.id}`)
+
+      toast({
+        title: "Presupuesto creado",
+        description: "Se ha creado un nuevo presupuesto.",
+      })
+    } catch (error) {
+      console.error("Error al crear presupuesto:", error)
+      toast({
+        title: "Error",
+        description: "Hubo un problema al crear el presupuesto. Inténtalo de nuevo.",
+        variant: "destructive",
+      })
     }
-
-    // Guardar en localStorage
-    if (typeof window !== "undefined") {
-      const resumenesGuardados = JSON.parse(localStorage.getItem("resumenesFinancieros") || "[]")
-      localStorage.setItem("resumenesFinancieros", JSON.stringify([...resumenesGuardados, nuevoRF]))
-    }
-
-    // Actualizar estado
-    setResumenesFinancieros([...resumenesFinancieros, nuevoRF])
-
-    // Redirigir a la página de detalle del RF
-    router.push(`/proyectos/${proyectoId}/resumenes-financieros/${nuevoRF.id}`)
-
-    toast({
-      title: "Resumen financiero creado",
-      description: `Se ha creado un nuevo resumen financiero de ${tipo}.`,
-    })
   }
 
   // Ver detalle de RF
@@ -94,20 +126,29 @@ export default function ResumenesFinancierosPage() {
 
   // Eliminar RF
   const eliminarRF = (rfId: string) => {
-    // Eliminar de localStorage
-    if (typeof window !== "undefined") {
-      const resumenesGuardados = JSON.parse(localStorage.getItem("resumenesFinancieros") || "[]")
-      const resumenesActualizados = resumenesGuardados.filter((r: ResumenFinanciero) => r.id !== rfId)
-      localStorage.setItem("resumenesFinancieros", JSON.stringify(resumenesActualizados))
+    try {
+      // Eliminar de localStorage
+      if (typeof window !== "undefined") {
+        const resumenesGuardados = JSON.parse(localStorage.getItem("resumenesFinancieros") || "[]")
+        const resumenesActualizados = resumenesGuardados.filter((r: ResumenFinanciero) => r.id !== rfId)
+        localStorage.setItem("resumenesFinancieros", JSON.stringify(resumenesActualizados))
+      }
+
+      // Actualizar estado
+      setResumenesFinancieros(resumenesFinancieros.filter((r) => r.id !== rfId))
+
+      toast({
+        title: "Presupuesto eliminado",
+        description: "El presupuesto ha sido eliminado con éxito.",
+      })
+    } catch (error) {
+      console.error("Error al eliminar presupuesto:", error)
+      toast({
+        title: "Error",
+        description: "Hubo un problema al eliminar el presupuesto. Inténtalo de nuevo.",
+        variant: "destructive",
+      })
     }
-
-    // Actualizar estado
-    setResumenesFinancieros(resumenesFinancieros.filter((r) => r.id !== rfId))
-
-    toast({
-      title: "Resumen financiero eliminado",
-      description: "El resumen financiero ha sido eliminado con éxito.",
-    })
   }
 
   // Formatear número como moneda
@@ -125,60 +166,38 @@ export default function ResumenesFinancierosPage() {
     return `${date.getDate()}/${date.getMonth() + 1}/${date.getFullYear()}`
   }
 
+  if (isLoading) {
+    return <div className="w-full min-h-screen bg-black text-white flex items-center justify-center">Cargando...</div>
+  }
+
   if (!proyecto) {
-    return <div className="container mx-auto py-10">Cargando...</div>
+    return (
+      <div className="w-full min-h-screen bg-black text-white flex items-center justify-center">
+        Proyecto no encontrado
+      </div>
+    )
   }
 
   return (
     <div className="w-full min-h-screen bg-black text-white">
-      {/* Encabezado */}
-      <div className="flex items-center justify-between p-4 border-b border-zinc-800">
-        <div className="flex items-center">
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => router.push(`/proyectos/${proyectoId}`)}
-            className="mr-4 text-zinc-400 hover:text-white"
-          >
-            <ArrowLeft className="h-4 w-4 mr-2" />
-            Volver al Proyecto
-          </Button>
-          <div>
-            <h1 className="text-xl font-bold">Resúmenes Financieros</h1>
-            <p className="text-sm text-zinc-400">{proyecto.nombre}</p>
-          </div>
-        </div>
-      </div>
-
-      {/* Pestañas */}
-      <div className="grid grid-cols-2 gap-1 p-2">
-        <button
-          className={`py-3 px-4 text-center rounded-sm transition-colors ${
-            tipoActivo === "presupuesto" ? "bg-zinc-800 text-white" : "bg-zinc-900 text-zinc-400 hover:bg-zinc-800"
-          }`}
-          onClick={() => setTipoActivo("presupuesto")}
+      {/* Header with only back arrow */}
+      <div className="p-4 border-b border-zinc-800">
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={() => router.push(`/proyectos/${proyectoId}`)}
+          className="text-zinc-400 hover:text-white p-2"
         >
-          Presupuesto
-        </button>
-        <button
-          className={`py-3 px-4 text-center rounded-sm transition-colors ${
-            tipoActivo === "venta" ? "bg-zinc-800 text-white" : "bg-zinc-900 text-zinc-400 hover:bg-zinc-800"
-          }`}
-          onClick={() => setTipoActivo("venta")}
-        >
-          Venta
-        </button>
+          <ArrowLeft className="h-5 w-5" />
+        </Button>
       </div>
 
       {/* Contenido */}
       <div className="p-4">
         <div className="flex items-center justify-between mb-4">
-          <h2 className="text-lg font-medium">Resúmenes de {tipoActivo === "presupuesto" ? "Presupuesto" : "Venta"}</h2>
-          <Button
-            onClick={() => crearNuevoRF(tipoActivo)}
-            className="bg-zinc-800 hover:bg-zinc-700 text-white border-none"
-          >
-            Nuevo RF {tipoActivo === "presupuesto" ? "Presupuesto" : "Venta"}
+          <h2 className="text-lg font-medium">Presupuestos</h2>
+          <Button onClick={crearNuevoRF} className="bg-zinc-800 hover:bg-zinc-700 text-white border-none">
+            Nuevo Presupuesto
           </Button>
         </div>
 
@@ -195,42 +214,40 @@ export default function ResumenesFinancierosPage() {
               </tr>
             </thead>
             <tbody>
-              {resumenesFinancieros
-                .filter((rf) => rf.tipo === tipoActivo)
-                .map((rf) => (
-                  <tr key={rf.id} className="border-b border-zinc-800 hover:bg-zinc-900">
-                    <td className="py-3 px-4">{rf.nombre}</td>
-                    <td className="py-3 px-4">{rf.descripcion || "-"}</td>
-                    <td className="py-3 px-4">{formatDate(rf.fecha)}</td>
-                    <td className="py-3 px-4 text-right">${formatCurrency(rf.total)}</td>
-                    <td className="py-3 px-4">
-                      <div className="flex justify-end space-x-2">
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => verDetalleRF(rf.id)}
-                          className="h-8 px-2 text-zinc-400 hover:text-white"
-                        >
-                          <Eye className="h-4 w-4 mr-1" />
-                          Ver
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => eliminarRF(rf.id)}
-                          className="h-8 px-2 text-red-500 hover:text-red-400"
-                        >
-                          <Trash2 className="h-4 w-4 mr-1" />
-                          Eliminar
-                        </Button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              {resumenesFinancieros.filter((rf) => rf.tipo === tipoActivo).length === 0 && (
+              {resumenesFinancieros.map((rf) => (
+                <tr key={rf.id} className="border-b border-zinc-800 hover:bg-zinc-900">
+                  <td className="py-3 px-4">{rf.nombre}</td>
+                  <td className="py-3 px-4">{rf.descripcion || "-"}</td>
+                  <td className="py-3 px-4">{formatDate(rf.fecha)}</td>
+                  <td className="py-3 px-4 text-right">Q{formatCurrency(rf.total)}</td>
+                  <td className="py-3 px-4">
+                    <div className="flex justify-end space-x-2">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => verDetalleRF(rf.id)}
+                        className="h-8 px-2 text-zinc-400 hover:text-white"
+                      >
+                        <Eye className="h-4 w-4 mr-1" />
+                        Ver
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => eliminarRF(rf.id)}
+                        className="h-8 px-2 text-red-500 hover:text-red-400"
+                      >
+                        <Trash2 className="h-4 w-4 mr-1" />
+                        Eliminar
+                      </Button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+              {resumenesFinancieros.length === 0 && (
                 <tr>
                   <td colSpan={5} className="py-8 text-center text-zinc-500">
-                    No hay resúmenes financieros de {tipoActivo} disponibles.
+                    No hay presupuestos disponibles.
                   </td>
                 </tr>
               )}

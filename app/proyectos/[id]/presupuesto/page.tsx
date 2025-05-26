@@ -5,7 +5,7 @@ import { useParams, useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { ArrowLeft, Calculator, PlusCircle, Eye, X, Search, Trash2 } from "lucide-react"
-import type { Proyecto } from "@/components/kokonutui/nuevo-proyecto-form"
+import type { Proyecto } from "@/components/nuevo-proyecto-form"
 import { Input } from "@/components/ui/input"
 import { useToast } from "@/hooks/use-toast"
 

@@ -2,7 +2,7 @@
 
 import type React from "react"
 import { useRouter } from "next/navigation"
-import type { Proyecto } from "@/components/kokonutui/nuevo-proyecto-form"
+import type { Proyecto } from "@/components/nuevo-proyecto-form"
 
 import {
   BarChart2,
@@ -21,7 +21,6 @@ import {
   HardHat,
   FileText,
   LogOut,
-  DollarSign,
   Calculator,
 } from "lucide-react"
 
@@ -217,21 +216,16 @@ export default function Sidebar() {
                               {proyecto.nombre}
                             </NavItem>
 
-                            {/* Subproyectos (presupuesto y venta) */}
+                            {/* Subproyectos (solo presupuesto) */}
                             {proyectosExpandidos.includes(proyecto.id) && (
                               <div className="ml-2 space-y-1 border-l-2 border-gray-200 dark:border-[#1F1F23]">
                                 {/* Proyecto Presupuesto (RF) */}
                                 <NavItem
-                                  href={`/proyectos/${proyecto.id}/presupuesto`}
+                                  href={`/proyectos/${proyecto.id}/resumenes-financieros`}
                                   icon={Calculator}
                                   isSubItem={true}
                                 >
                                   Presupuesto (RF)
-                                </NavItem>
-
-                                {/* Proyecto Venta (RF) */}
-                                <NavItem href={`/proyectos/${proyecto.id}/venta`} icon={DollarSign} isSubItem={true}>
-                                  Venta (RF)
                                 </NavItem>
                               </div>
                             )}

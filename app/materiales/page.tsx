@@ -1,7 +1,7 @@
 "use client"
 
 import { useState } from "react"
-import { AgregarMaterialForm } from "@/components/kokonutui/agregar-material-form"
+import { AgregarMaterialForm } from "@/components/agregar-material-form"
 import { Button } from "@/components/ui/button"
 import { Package } from "lucide-react"
 

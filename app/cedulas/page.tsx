@@ -17,9 +17,9 @@ import {
   SortDesc,
   X,
 } from "lucide-react"
-import { NuevaCedula } from "@/components/kokonutui/nueva-cedula"
+import { NuevaCedula } from "@/components/nueva-cedula"
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from "@/components/ui/card"
-import { DetalleCedula } from "@/components/kokonutui/detalle-cedula"
+import { DetalleCedula } from "@/components/detalle-cedula"
 import { useRouter } from "next/navigation"
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
